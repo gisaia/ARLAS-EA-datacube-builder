@@ -1,12 +1,19 @@
 #!/usr/bin/python3
+from typing import List
 
 import rasterio
+from rasterio.io import DatasetReader
 from rasterio.windows import Window
+from rasterio.mask import mask
+from rasterio.coords import BoundingBox
+
 import zarr
 import numpy as np
 
+from shapely.geometry import Polygon
+
 # inspired by https://gist.github.com/lucaswells/fd2fd73c513872966c1a0257afee1887
-def convert(raster_filepath, zarr_filepath, chunk_mbs=1):
+def convert(raster_filepath, zarr_filepath, polygon:Polygon=None, chunk_mbs=1):
     """
     Converts raster file to chunked and compressed zarr array.
 
@@ -22,10 +29,32 @@ def convert(raster_filepath, zarr_filepath, chunk_mbs=1):
     raster = rasterio.open(raster_filepath)
 
     # Extract metadata we need for initializing the zarr array
-    width = raster.width
-    height = raster.height
-    n_bands = raster.count
     dtype = raster.dtypes[0].lower()
+    bounds = raster.bounds
+    crs = raster.crs.to_string()
+
+    if polygon:
+        rasterData, transform = extract(raster, [polygon])
+        rasterData = np.squeeze(rasterData)
+
+        width = rasterData.shape[1]
+        height = rasterData.shape[0]
+
+        # Find the new bounding box of the data
+        rasterPolygon = Polygon([
+                (bounds.left, bounds.bottom), 
+                (bounds.right, bounds.bottom), 
+                (bounds.right, bounds.top), 
+                (bounds.left, bounds.top), 
+                (bounds.left, bounds.bottom)])
+
+        intersectionBounds = polygon.intersection(rasterPolygon).bounds
+        bounds = BoundingBox(intersectionBounds[0], intersectionBounds[1], intersectionBounds[2], intersectionBounds[3])
+    else:
+        rasterData = raster.read(1)
+        width = raster.width
+        height = raster.height
+        transform = raster.transform
 
     # Specify the number of bytes for common raster
     # datatypes so we can compute chunk shape
@@ -45,7 +74,7 @@ def convert(raster_filepath, zarr_filepath, chunk_mbs=1):
     # Create zarr store
     store = zarr.DirectoryStore(zarr_filepath)
 
-    xmin, ymin, xmax, ymax = raster.bounds
+    xmin, ymin, xmax, ymax = bounds
 
     x = zarr.create(
         shape=(width,),
@@ -81,32 +110,27 @@ def convert(raster_filepath, zarr_filepath, chunk_mbs=1):
         # Let's add the metadata to the zarr file
         zarray.attrs['width'] = width
         zarray.attrs['height'] = height
-        zarray.attrs['count'] = n_bands
         zarray.attrs['dtype'] = dtype
-        zarray.attrs['bounds'] = raster.bounds
-        zarray.attrs['transform'] = raster.transform
-        zarray.attrs['crs'] = raster.crs.to_string()
+        zarray.attrs['bounds'] = bounds
+        zarray.attrs['transform'] = transform
+        zarray.attrs['crs'] = crs
         zarray.attrs['_ARRAY_DIMENSIONS'] = ['x', 'y']
 
-        # Now we'll read and write the data according to the chuck size to prevent memory saturation
-        for xstart in range(0, width+chunk_shape[0], chunk_shape[0]):
-            if xstart > width:
-                continue
-            xend = min(xstart + chunk_shape[0], width)
-            for ystart in range(0, height+chunk_shape[1], chunk_shape[1]):
-                if ystart > height:
-                    continue
-                yend = min(ystart + chunk_shape[1], height)
-
-                print('Chunk')
-                print(f'column {xstart} to {xend} out of {width}')
-                print(f'line {ystart} to {yend} out of {height}\n')
-
-                data = raster.read(k, window=Window(xstart, ystart, xend - xstart, yend - ystart))
-                zarray[xstart:xend, ystart:yend] = np.transpose(data)
+        zarray[:] = np.flip(np.transpose(rasterData), 1)
     
     # Close the raster dataset; no need to close the zarr file
     raster.close()
 
     # Consolidate the metadata into a single .zmetadata file
     zarr.consolidate_metadata(store)
+
+def extract(raster:DatasetReader, polygons:List[Polygon]):
+    return mask(raster, polygons, crop=True)
+
+if __name__ == "__main__":
+    RASTER_FILE = "./data/soilClassificationwithMachineLearningwithPythonScikitLearn/S2B_MSIL1C_20200917T151709_N0209_R125_T18LUM_20200917T203629.SAFE/GRANULE/L1C_T18LUM_A018455_20200917T151745/IMG_DATA/T18LUM_20200917T151709_B01.jp2"
+    ZARR_FILE = "./output/zarr/test"
+
+    polygon = Polygon([(383700.0, 8651200.0), (397400.0, 8651200.0), (397400.0, 8642300.0), (383700.0, 8642300.0), (383700.0, 8651200.0)])
+
+    convert(RASTER_FILE, ZARR_FILE, polygon)

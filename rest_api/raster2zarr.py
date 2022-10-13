@@ -1,16 +1,10 @@
 #!/usr/bin/python3
 
-from flask import Flask
 from flask_restx import Namespace, Resource, fields
 
-from utils import convert
-
-from pprint import pprint
+from utils import convert, bbox2polygon
 
 api = Namespace("raster2zarr", description="Transform a raster file into a zarr file")
-
-RASTER_FILE = "./data/soilClassificationwithMachineLearningwithPythonScikitLearn/S2B_MSIL1C_20200917T151709_N0209_R125_T18LUM_20200917T203629.SAFE/GRANULE/L1C_T18LUM_A018455_20200917T151745/IMG_DATA/T18LUM_20200917T151709_B01.jp2"
-ZARR_FILE = "./output/zarr/test"
 
 CONVERTRASTER_MODEL = api.model(
     "ConvertRaster",
@@ -20,8 +14,12 @@ CONVERTRASTER_MODEL = api.model(
             readonly=True, 
             description="The path to the raster file to convert"),
         "zarrFile": fields.String(
+            required=True, 
             readonly=True, 
-            description="The path of the output ZARR file")
+            description="The path of the output ZARR file"),
+        "roi": fields.String(
+            readonly=True,
+            description="The BBox to extract")
     }
 )
 
@@ -30,13 +28,14 @@ class ConvertRaster(Resource):
 
     @api.doc(params={
         'rasterFile': 'The raster file to transform',
-        'zarrFile': 'The output of the transformation'
+        'zarrFile': 'The output of the transformation',
+        'roi': 'The Region Of Interest (bbox) to extract'
         })
     @api.expect(CONVERTRASTER_MODEL)
     def post(self):
-        pprint("[CONVERT RASTER] Received POST")
         try:
-            convert(api.payload["rasterFile"], api.payload["zarrFile"])
+            polygon = bbox2polygon(api.payload["roi"])
+            convert(api.payload["rasterFile"], api.payload["zarrFile"], polygon=polygon)
             return "Operation completed", 200
         except:
             return "Error in the process", 500

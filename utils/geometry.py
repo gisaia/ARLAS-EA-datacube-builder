@@ -1,7 +1,9 @@
 import string
-from shapely.geometry import Polygon, Point
 
-def bbox2polygon(bbox:string):
+from shapely.geometry import Point, Polygon
+
+
+def bbox2polygon(bbox: string):
     """
     Convert a bbox (left, bot, right, top) to a shapely Polygon
     """

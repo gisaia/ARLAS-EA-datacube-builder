@@ -1,136 +1,81 @@
 #!/usr/bin/python3
+import shutil
 from typing import List
 
-import rasterio
-from rasterio.io import DatasetReader
-from rasterio.windows import Window
-from rasterio.mask import mask
-from rasterio.coords import BoundingBox
-
-import zarr
 import numpy as np
-
+import rasterio
+import xarray as xr
+from rasterio.io import DatasetReader
+from rasterio.mask import mask
 from shapely.geometry import Polygon
 
-# inspired by https://gist.github.com/lucaswells/fd2fd73c513872966c1a0257afee1887
-def convert(raster_filepath, zarr_filepath, polygon:Polygon=None, chunk_mbs=1):
+from models.raster import Raster, getChunkSize
+
+
+# Loosely inspired from
+# https://gist.github.com/lucaswells/fd2fd73c513872966c1a0257afee1887
+def convert(bandsToExtract: List[str], zarrFilepath,
+            polygon: Polygon = None, chunkMbs=1):
     """
     Converts raster file to chunked and compressed zarr array.
 
     Parameters
     ----------
-    raster_filepath : string
-        Path and filename of input raster
+    bandsToExtract : List[str]
+        Paths to raster bands
+    zarrFilepath : str
+        Path to final zarr file with all bands
+    polygon: Polygon, optional
+        Polygon representing the ROI
     chunk_mbs : float, optional
         Desired size (MB) of chunks in zarr file
     """
 
-    # Open the raster file
-    raster = rasterio.open(raster_filepath)
+    # Open all rasters to get the zarr stores
+    zarrs = []
+    maxWidth = 0
+    maxHeight = 0
+    dtype = ""
 
-    # Extract metadata we need for initializing the zarr array
-    dtype = raster.dtypes[0].lower()
-    bounds = raster.bounds
-    crs = raster.crs.to_string()
+    # Create all the zarr files/stores
+    # Finds the most precise grid to use it for the zarrs
+    for band in bandsToExtract:
+        with rasterio.open(band) as rasterReader:
+            # Create Raster object
+            raster = Raster(band[-7:-4], rasterReader, polygon)
+            dtype = raster.dtype
 
-    if polygon:
-        rasterData, transform = extract(raster, [polygon])
-        rasterData = np.squeeze(rasterData)
+            # Create zarr file
+            zarrStore = raster.createZarrFile(
+                zarrFilepath + "_tmp", chunkMbs=chunkMbs)
 
-        width = rasterData.shape[1]
-        height = rasterData.shape[0]
+            # Retrieve the most precise axis to use for future interpolation
+            if raster.width > maxWidth:
+                maxWidth = raster.width
+                xmin, _, xmax, _ = raster.bounds
+                x = np.arange(xmin, xmax, (xmax-xmin)/raster.width)
+            if raster.height > maxHeight:
+                maxHeight = raster.height
+                _, ymin, _, ymax = raster.bounds
+                y = np.arange(ymin, ymax, (ymax-ymin)/raster.height)
 
-        # Find the new bounding box of the data
-        rasterPolygon = Polygon([
-                (bounds.left, bounds.bottom), 
-                (bounds.right, bounds.bottom), 
-                (bounds.right, bounds.top), 
-                (bounds.left, bounds.top), 
-                (bounds.left, bounds.bottom)])
+            zarrs.append(zarrStore)
 
-        intersectionBounds = polygon.intersection(rasterPolygon).bounds
-        bounds = BoundingBox(intersectionBounds[0], intersectionBounds[1], intersectionBounds[2], intersectionBounds[3])
-    else:
-        rasterData = raster.read(1)
-        width = raster.width
-        height = raster.height
-        transform = raster.transform
+    # Retrieve the zarr stores as xarray objects that are on a same grid
+    interpDataset = xr.Dataset({"x": x, "y": y})
+    allZarrs = []
+    for zarrStore in zarrs:
+        xrZarr = xr.open_zarr(zarrStore)
+        if xrZarr.dims["x"] != maxWidth or xrZarr.dims["y"] != maxHeight:
+            xrZarr = xrZarr.interp_like(interpDataset) \
+                           .chunk(getChunkSize(dtype, chunkMbs))
+        allZarrs.append(xrZarr)
+    del zarrs
 
-    # Specify the number of bytes for common raster
-    # datatypes so we can compute chunk shape
-    dtype_bytes = {
-        'byte'     : 1.,
-        'uint16'   : 2.,
-        'int16'    : 2.,
-        'uint32'   : 4.,
-        'int32'    : 4.,
-        'float32'  : 4.,
-        'float64'  : 8.,
-    }
+    # Merge all bands and remove temporary zarrs
+    xr.merge(allZarrs).to_zarr(zarrFilepath)
+    shutil.rmtree(zarrFilepath + "_tmp")
 
-    # Compute the chunk shape
-    chunk_shape = (int((chunk_mbs * 1e6/dtype_bytes[dtype])**0.5),)*2 #TODO: chunk size is not the correct one in the end
 
-    # Create zarr store
-    store = zarr.DirectoryStore(zarr_filepath)
-
-    xmin, ymin, xmax, ymax = bounds
-
-    x = zarr.create(
-        shape=(width,),
-        dtype='float32',
-        store=store,
-        overwrite=True,
-        path="x"
-    )
-    x[:] = np.arange(xmin, xmax, (xmax-xmin)/width)
-    x.attrs['_ARRAY_DIMENSIONS'] = ['x']
-
-    y = zarr.create(
-        shape=(height,),
-        dtype='float32',
-        store=store,
-        overwrite=True,
-        path="y"
-    )
-    y[:] = np.arange(ymin, ymax, (ymax-ymin)/height)
-    y.attrs['_ARRAY_DIMENSIONS'] = ['y']
-
-    for k in raster.indexes:
-        # Create zarr array for each band required
-        zarray = zarr.create(
-            shape=(width, height),
-            chunks=chunk_shape,
-            dtype=dtype,
-            store=store,
-            overwrite=True,
-            path=k #TODO: replace k with the name of the band
-        )
-
-        # Let's add the metadata to the zarr file
-        zarray.attrs['width'] = width
-        zarray.attrs['height'] = height
-        zarray.attrs['dtype'] = dtype
-        zarray.attrs['bounds'] = bounds
-        zarray.attrs['transform'] = transform
-        zarray.attrs['crs'] = crs
-        zarray.attrs['_ARRAY_DIMENSIONS'] = ['x', 'y']
-
-        zarray[:] = np.flip(np.transpose(rasterData), 1)
-    
-    # Close the raster dataset; no need to close the zarr file
-    raster.close()
-
-    # Consolidate the metadata into a single .zmetadata file
-    zarr.consolidate_metadata(store)
-
-def extract(raster:DatasetReader, polygons:List[Polygon]):
+def extract(raster: DatasetReader, polygons: List[Polygon]):
     return mask(raster, polygons, crop=True)
-
-if __name__ == "__main__":
-    RASTER_FILE = "./data/soilClassificationwithMachineLearningwithPythonScikitLearn/S2B_MSIL1C_20200917T151709_N0209_R125_T18LUM_20200917T203629.SAFE/GRANULE/L1C_T18LUM_A018455_20200917T151745/IMG_DATA/T18LUM_20200917T151709_B01.jp2"
-    ZARR_FILE = "./output/zarr/test"
-
-    polygon = Polygon([(383700.0, 8651200.0), (397400.0, 8651200.0), (397400.0, 8642300.0), (383700.0, 8642300.0), (383700.0, 8651200.0)])
-
-    convert(RASTER_FILE, ZARR_FILE, polygon)

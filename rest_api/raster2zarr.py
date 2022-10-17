@@ -1,9 +1,12 @@
 #!/usr/bin/python3
 
 import re
+from datetime import datetime
 from zipfile import ZipFile
 
+from dateutil import parser
 from flask_restx import Namespace, Resource, fields
+from lxml import etree
 
 from utils.geometry import bbox2polygon
 from utils.raster2zarr import convert
@@ -32,7 +35,9 @@ CONVERTRASTER_MODEL = api.model(
     }
 )
 
-ZIP_EXTRACT_PATH = "tmp"
+ZIP_EXTRACT_PATH = "tmp/"
+PRODUCT_START_TIME = "n1:General_Info/Product_Info/PRODUCT_START_TIME"
+PRODUCT_STOP_TIME = "n1:General_Info/Product_Info/PRODUCT_STOP_TIME"
 
 
 @api.route('/convert')
@@ -54,16 +59,32 @@ class ConvertRaster(Resource):
         bandsToExtract = []
         with ZipFile(rasterFile, "r") as zipObj:
             listOfFileNames = zipObj.namelist()
+            # Extract timestamp of production of the product
+            for fileName in listOfFileNames:
+                if re.match(r".*MTD_MSI.*\.xml", fileName):
+                    zipObj.extract(fileName, ZIP_EXTRACT_PATH)
+                    metadata: etree._ElementTree = etree.parse(
+                        ZIP_EXTRACT_PATH + fileName)
+                    root: etree._Element = metadata.getroot()
+                    startTime = parser.parse(root.xpath(
+                        PRODUCT_START_TIME, namespaces=root.nsmap)[0].text)
+
+                    stopTime = parser.parse(root.xpath(
+                        PRODUCT_STOP_TIME, namespaces=root.nsmap)[0].text)
+
+                    productTime = int((datetime.timestamp(startTime)
+                                       + datetime.timestamp(stopTime)) / 2)
+
             for band in api.payload["bands"]:
                 for fileName in listOfFileNames:
-                    if re.match(".*/IMG_DATA/.*" + band + "\.jp2", fileName):
+                    if re.match(r".*/IMG_DATA/.*" + band + r"\.jp2", fileName):
                         zipObj.extract(fileName, ZIP_EXTRACT_PATH)
-                        bandsToExtract.append(
-                            ZIP_EXTRACT_PATH + "/" + fileName)
+                        bandsToExtract.append(ZIP_EXTRACT_PATH + fileName)
 
         try:
             polygon = bbox2polygon(api.payload["roi"])
-            convert(bandsToExtract, api.payload["zarrFile"], polygon=polygon)
+            convert(bandsToExtract, api.payload["zarrFile"],
+                    productTime, polygon=polygon)
             return "Operation completed", 200
         except Exception:
             return "Error in the process", 500

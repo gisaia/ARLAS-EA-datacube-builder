@@ -66,12 +66,13 @@ class Raster:
             self.bounds = rasterReader.bounds
             self.transform = rasterReader.transform
 
-    def createZarrFile(self,
-                       zarrRootPath: str, chunkMbs=1) -> zarr.DirectoryStore:
+    def createZarrFile(self, zarrRootPath: str,
+                       productTime: int, chunkMbs=1) -> zarr.DirectoryStore:
 
         store = zarr.DirectoryStore(f"{zarrRootPath}/{self.band}")
 
-        chunkShape = (getChunkSize(self.dtype, chunkMbs),)*2
+        chunkShape = (getChunkSize(self.dtype, chunkMbs),
+                      getChunkSize(self.dtype, chunkMbs), 1)
         # TODO: chunk size is not the correct one in the end
 
         xmin, ymin, xmax, ymax = self.bounds
@@ -95,9 +96,19 @@ class Raster:
         y[:] = np.arange(ymin, ymax, (ymax-ymin)/self.height)
         y.attrs['_ARRAY_DIMENSIONS'] = ['y']
 
+        t = zarr.create(
+            shape=(1,),
+            dtype="int",
+            store=store,
+            overwrite=True,
+            path="t"
+        )
+        t[:] = [productTime]
+        t.attrs['_ARRAY_DIMENSIONS'] = ['t']
+
         # Create zarr array for each band required
         zarray = zarr.create(
-            shape=(self.width, self.height),
+            shape=(self.width, self.height, 1),
             chunks=chunkShape,
             dtype=self.dtype,
             store=store,
@@ -112,9 +123,9 @@ class Raster:
         zarray.attrs['bounds'] = self.bounds
         zarray.attrs['transform'] = self.transform
         zarray.attrs['crs'] = self.crs
-        zarray.attrs['_ARRAY_DIMENSIONS'] = ['x', 'y']
+        zarray.attrs['_ARRAY_DIMENSIONS'] = ['x', 'y', 't']
 
-        zarray[:] = np.flip(np.transpose(self.rasterData), 1)
+        zarray[:, :, 0] = np.flip(np.transpose(self.rasterData), 1)
 
         # Consolidate the metadata into a single .zmetadata file
         zarr.consolidate_metadata(store)

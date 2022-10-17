@@ -14,7 +14,7 @@ from models.raster import Raster, getChunkSize
 
 # Loosely inspired from
 # https://gist.github.com/lucaswells/fd2fd73c513872966c1a0257afee1887
-def convert(bandsToExtract: List[str], zarrFilepath,
+def convert(bandsToExtract: List[str], zarrFilepath, productTime: int,
             polygon: Polygon = None, chunkMbs=1):
     """
     Converts raster file to chunked and compressed zarr array.
@@ -25,6 +25,8 @@ def convert(bandsToExtract: List[str], zarrFilepath,
         Paths to raster bands
     zarrFilepath : str
         Path to final zarr file with all bands
+    productTime : int
+        The average timestamp of the product
     polygon: Polygon, optional
         Polygon representing the ROI
     chunk_mbs : float, optional
@@ -47,7 +49,7 @@ def convert(bandsToExtract: List[str], zarrFilepath,
 
             # Create zarr file
             zarrStore = raster.createZarrFile(
-                zarrFilepath + "_tmp", chunkMbs=chunkMbs)
+                zarrFilepath + "_tmp", productTime, chunkMbs=chunkMbs)
 
             # Retrieve the most precise axis to use for future interpolation
             if raster.width > maxWidth:
@@ -73,7 +75,7 @@ def convert(bandsToExtract: List[str], zarrFilepath,
     del zarrs
 
     # Merge all bands and remove temporary zarrs
-    xr.merge(allZarrs).to_zarr(zarrFilepath)
+    xr.merge(allZarrs).to_zarr(zarrFilepath, mode="w")
     shutil.rmtree(zarrFilepath + "_tmp")
 
 

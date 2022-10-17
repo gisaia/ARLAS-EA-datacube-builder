@@ -20,7 +20,7 @@ with ZipFile(RASTER_ZIP_FILE, "r") as zipObj:
     listOfFileNames = zipObj.namelist()
     for band in BANDS:
         for fileName in listOfFileNames:
-            if re.match(".*/IMG_DATA/.*" + band + "\.jp2", fileName):
+            if re.match(r".*/IMG_DATA/.*" + band + r"\.jp2", fileName):
                 zipObj.extract(fileName, "tmp")
                 bandsToExtract.append("tmp/" + fileName)
 
@@ -28,4 +28,4 @@ polygon = Polygon([(383700.0, 8651200.0), (397400.0, 8651200.0),
                    (397400.0, 8642300.0), (383700.0, 8642300.0),
                    (383700.0, 8651200.0)])
 
-convert(bandsToExtract, ZARR_FILE, None)
+convert(bandsToExtract, ZARR_FILE, 10, None)

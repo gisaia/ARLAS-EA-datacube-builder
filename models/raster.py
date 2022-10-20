@@ -66,8 +66,8 @@ class Raster:
             self.bounds = rasterReader.bounds
             self.transform = rasterReader.transform
 
-    def createZarrFile(self, zarrRootPath: str,
-                       productTime: int, chunkMbs=1) -> zarr.DirectoryStore:
+    def createZarrStore(self, zarrRootPath: str,
+                        productTime: int, chunkMbs=1) -> zarr.DirectoryStore:
 
         store = zarr.DirectoryStore(f"{zarrRootPath}/{self.band}")
 

@@ -118,6 +118,5 @@ class Sentinel2_Level2A(AbstractRasterArchive):
                                 rf".*{band}_{bandResolution}m\.jp2",
                                 fileName):
 
-                        print(fileName)
                         zipObj.extract(fileName, zipExtractPath)
                         self.bandsToExtract[band] = zipExtractPath + fileName

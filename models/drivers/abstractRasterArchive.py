@@ -17,7 +17,7 @@ class AbstractRasterArchive(abc.ABC):
     # Loosely inspired from
     # https://gist.github.com/lucaswells/fd2fd73c513872966c1a0257afee1887
     def convert(self, zarrFilepath, polygon: Polygon = None,
-                chunkMbs=1) -> xr.Dataset:
+                chunkMbs=1, logger=None) -> xr.Dataset:
         """
         Converts raster file to chunked and compressed zarr array.
 
@@ -44,14 +44,15 @@ class AbstractRasterArchive(abc.ABC):
         # Create all the zarr files/stores
         # Finds the most precise grid for the zarrs
         for band, rasterPath in self.bandsToExtract.items():
-            print(f"Creating ZARR for band {band}")
+            if logger:
+                logger.info(f"Creating ZARR for band {band}")
             with rasterio.open(rasterPath) as rasterReader:
                 # Create Raster object
                 raster = Raster(band, rasterReader, polygon)
                 dtype = raster.dtype
 
-                # Create zarr file
-                zarrStore = raster.createZarrFile(
+                # Create zarr store
+                zarrStore = raster.createZarrStore(
                     zarrFilepath + "_tmp", self.productTime,
                     chunkMbs=chunkMbs)
 
@@ -64,8 +65,9 @@ class AbstractRasterArchive(abc.ABC):
                     _, ymin, _, ymax = raster.bounds
 
                 zarrs.append(zarrStore)
-        print("Created ZARR Stores")
-        print("Interpolating ZARRs on same grid")
+        if logger:
+            logger.info("Created ZARR Stores")
+            logger.info("Interpolating ZARRs on same grid")
 
         # Retrieve the zarr stores as xarray objects that are on a same grid
         interpDataset = xr.Dataset({

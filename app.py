@@ -3,13 +3,12 @@
 import argparse
 
 from flask import Flask
-from flask_restx import Api
 
 from rest_api import api
 
 
 class App:
-    def __init__(self, api: Api):
+    def __init__(self):
         self.app = Flask(__name__)
         api.init_app(self.app)
 
@@ -25,5 +24,5 @@ if __name__ == "__main__":
                         help="Enable debug mode")
     args = parser.parse_args()
 
-    app = App(api)
+    app = App()
     app.run(debug=args.debug)

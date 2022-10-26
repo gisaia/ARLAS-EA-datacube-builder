@@ -1,9 +1,12 @@
 import re
 from datetime import datetime
-from zipfile import ZipFile
+import zipfile
+import smart_open as so
 
 from dateutil import parser
 from lxml import etree
+
+from models.objectStoreDrivers.abstractObjectStore import AbstractObjectStore
 
 from .abstractRasterArchive import AbstractRasterArchive
 
@@ -18,11 +21,11 @@ LOW_RESOLUTION = 60
 
 class Sentinel2_Level2A(AbstractRasterArchive):
 
-    def __init__(self, rasterPath, bands,
+    def __init__(self, objectStore: AbstractObjectStore, rasterURI, bands,
                  targetResolution, zipExtractPath="tmp/"):
 
         self._findBandsResolution(bands, targetResolution)
-        self._extract_metadata(rasterPath, bands, zipExtractPath)
+        self._extract_metadata(objectStore, rasterURI, bands, zipExtractPath)
 
     def _findBandsResolution(self, bands, targetResolution):
         # Force the resolution to be higher than HIGH_RESOLUTION
@@ -87,36 +90,38 @@ class Sentinel2_Level2A(AbstractRasterArchive):
         else:
             self.bandsWithResolution[band] = LOW_RESOLUTION
 
-    def _extract_metadata(self, rasterPath, bands, zipExtractPath):
+    def _extract_metadata(self, objectStore, rasterURI, bands, zipExtractPath):
         self.bandsToExtract = {}
 
-        if rasterPath[-4:] != ".zip":
-            raise FileNotFoundError("File does not have the expected format")
+        params = {'client': objectStore.client}
 
-        with ZipFile(rasterPath, "r") as zipObj:
-            listOfFileNames = zipObj.namelist()
-            # Extract timestamp of production of the product
-            for fileName in listOfFileNames:
-                if re.match(r".*MTD_MSI.*\.xml", fileName):
-                    zipObj.extract(fileName, zipExtractPath)
-                    metadata: etree._ElementTree = etree.parse(
-                        zipExtractPath + fileName)
-                    root: etree._Element = metadata.getroot()
-                    startTime = parser.parse(root.xpath(
-                        PRODUCT_START_TIME, namespaces=root.nsmap)[0].text)
-
-                    endTime = parser.parse(root.xpath(
-                        PRODUCT_STOP_TIME, namespaces=root.nsmap)[0].text)
-
-                    self.productTime = int((datetime.timestamp(startTime)
-                                            + datetime.timestamp(endTime)) / 2)
-
-            for band in bands:
-                bandResolution = self.bandsWithResolution[band]
+        with so.open(rasterURI, "rb", transport_params=params) as fileBytes:
+            with zipfile.ZipFile(fileBytes) as rasterZip:
+                listOfFileNames = rasterZip.namelist()
+                # Extract timestamp of production of the product
                 for fileName in listOfFileNames:
-                    if re.match(rf".*/IMG_DATA/R{bandResolution}m/" +
-                                rf".*{band}_{bandResolution}m\.jp2",
-                                fileName):
+                    if re.match(r".*MTD_MSI.*\.xml", fileName):
+                        rasterZip.extract(fileName, zipExtractPath)
+                        metadata: etree._ElementTree = etree.parse(
+                            zipExtractPath + fileName)
+                        root: etree._Element = metadata.getroot()
+                        startTime = parser.parse(root.xpath(
+                            PRODUCT_START_TIME, namespaces=root.nsmap)[0].text)
 
-                        zipObj.extract(fileName, zipExtractPath)
-                        self.bandsToExtract[band] = zipExtractPath + fileName
+                        endTime = parser.parse(root.xpath(
+                            PRODUCT_STOP_TIME, namespaces=root.nsmap)[0].text)
+
+                        self.productTime = int(
+                            (datetime.timestamp(startTime)
+                             + datetime.timestamp(endTime)) / 2)
+
+                for band in bands:
+                    bandResolution = self.bandsWithResolution[band]
+                    for fileName in listOfFileNames:
+                        if re.match(rf".*/IMG_DATA/R{bandResolution}m/" +
+                                    rf".*{band}_{bandResolution}m\.jp2",
+                                    fileName):
+
+                            rasterZip.extract(fileName, zipExtractPath)
+                            self.bandsToExtract[band] = zipExtractPath + \
+                                fileName

@@ -5,7 +5,7 @@ from zipfile import ZipFile
 from dateutil import parser
 from lxml import etree
 
-from .fileFormats import AbstractRasterArchive
+from .abstractRasterArchive import AbstractRasterArchive
 
 PRODUCT_START_TIME = "n1:General_Info/Product_Info/PRODUCT_START_TIME"
 PRODUCT_STOP_TIME = "n1:General_Info/Product_Info/PRODUCT_STOP_TIME"

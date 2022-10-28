@@ -14,20 +14,20 @@ from utils.objectStore import createInputObjectStore, \
 
 from urllib.parse import urlparse
 
-api = Namespace("raster2zarr",
-                description="Transform a raster file into a zarr file")
+api = Namespace("datacube",
+                description="Build a data cube from raster files")
 
-CONVERTRASTER_MODEL = api.model(
-    "ConvertRaster",
+DATACUBE_BUILD_MODEL = api.model(
+    "DatacubeBuild",
     {
         "rasterFiles": fields.List(
             fields.Nested(RASTERFILE_MODEL),
             required=True,
             readonly=True),
-        "zarrFile": fields.String(
+        "dataCubePath": fields.String(
             required=True,
             readonly=True,
-            description="The path of the output ZARR file"),
+            description="The Object Store path to the data cube"),
         "roi": fields.String(
             readonly=True,
             description="The BBox to extract"),
@@ -47,19 +47,19 @@ PRODUCT_START_TIME = "n1:General_Info/Product_Info/PRODUCT_START_TIME"
 PRODUCT_STOP_TIME = "n1:General_Info/Product_Info/PRODUCT_STOP_TIME"
 
 
-@api.route('/convert')
-class ConvertRaster(Resource):
+@api.route('/build')
+class DataCube_Build(Resource):
 
     @api.doc(params={
-        'rasterFile': 'The raster files to transform (Sentinel-2 zip)',
-        'zarrFile': 'The output of the transformation',
+        'rasterFile': 'The raster files to build the data cube from',
+        'dataCubePath': 'The Object Store path to the data cube',
         'roi': 'The Region Of Interest (bbox) to extract',
         'bands': 'The list of bands to extract',
         'targetResolution': 'The requested end resolution in meters'
         })
-    @api.expect(CONVERTRASTER_MODEL)
+    @api.expect(DATACUBE_BUILD_MODEL)
     def post(self):
-        api.logger.info("[POST] /convert")
+        api.logger.info("[POST] /build")
         rasterFiles: List = api.payload["rasterFiles"]
 
         polygon = bbox2polygon(api.payload["roi"]) \
@@ -70,7 +70,7 @@ class ConvertRaster(Resource):
             if "targetResolution" in api.payload \
             else 10
 
-        parsedDestination = urlparse(api.payload["zarrFile"])
+        parsedDestination = urlparse(api.payload["dataCubePath"])
 
         datasets: List[xr.Dataset] = []
 
@@ -95,7 +95,7 @@ class ConvertRaster(Resource):
             try:
                 api.logger.info(f"[File {idx + 1}] Building ZARR from bands")
 
-                dataset = rasterArchive.convert(
+                dataset = rasterArchive.buildZarr(
                   f"{parsedDestination.netloc}/{parsedDestination.path}_{idx}",
                   polygon=polygon)
                 datasets.append(dataset)
@@ -115,7 +115,7 @@ class ConvertRaster(Resource):
 
         api.logger.info("Writing datacube to Object Store")
         try:
-            mapper = getMapperOutputObjectStore(api.payload["zarrFile"])
+            mapper = getMapperOutputObjectStore(api.payload["dataCubePath"])
             dataset.to_zarr(mapper, mode="w")
         except Exception as e:
             api.logger.error(e)

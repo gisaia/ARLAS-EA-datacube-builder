@@ -16,15 +16,15 @@ class AbstractRasterArchive(abc.ABC):
 
     # Loosely inspired from
     # https://gist.github.com/lucaswells/fd2fd73c513872966c1a0257afee1887
-    def convert(self, zarrFilepath, polygon: Polygon = None,
-                chunkMbs=1) -> xr.Dataset:
+    def buildZarr(self, zarrPath, polygon: Polygon = None,
+                  chunkMbs=1) -> xr.Dataset:
         """
-        Converts raster file to chunked and compressed zarr array.
+        Build a chunked and compressed zarr from raster files.
 
         Parameters
         ----------
-        zarrFilepath : str
-            Path to final zarr file with all bands
+        zarrPath : str
+            Path to final zarr file with all desired bands
         polygon: Polygon, optional
             Polygon representing the ROI
         chunk_mbs : float, optional
@@ -47,7 +47,7 @@ class AbstractRasterArchive(abc.ABC):
 
                 # Create zarr store
                 zarrStore = raster.createZarrStore(
-                    zarrFilepath, self.productTime, chunkMbs=chunkMbs)
+                    zarrPath, self.productTime, chunkMbs=chunkMbs)
 
                 # Retrieve the most precise axis for future interpolation
                 if raster.width > maxWidth:

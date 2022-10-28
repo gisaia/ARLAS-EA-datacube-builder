@@ -1,7 +1,9 @@
 from flask_restx import Api
 
-from .raster2zarr import api as R2Zapi
+from .datacube import api as DataCubeAPI
 
-api = Api(title="ARLAS DataCube Builder API", version="1.0", description="An API to convert raster data to zarr archives",)
+api = Api(title="ARLAS DataCube Builder API",
+          version="1.0",
+          description="An API to build data cubes from raster files")
 
-api.add_namespace(R2Zapi)
+api.add_namespace(DataCubeAPI)

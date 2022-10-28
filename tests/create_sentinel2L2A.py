@@ -22,4 +22,4 @@ sentinel2 = Sentinel2_Level2A(objectStore, RASTER_URI,
 print(sentinel2.bandsWithResolution)
 print(sentinel2.targetResolution)
 
-sentinel2.convert("output/zarr/testSentinel")
+sentinel2.buildZarr("output/zarr/testSentinel")

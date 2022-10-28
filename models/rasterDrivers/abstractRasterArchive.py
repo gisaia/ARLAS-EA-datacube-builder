@@ -47,8 +47,7 @@ class AbstractRasterArchive(abc.ABC):
 
                 # Create zarr store
                 zarrStore = raster.createZarrStore(
-                    zarrFilepath + "_tmp", self.productTime,
-                    chunkMbs=chunkMbs)
+                    zarrFilepath, self.productTime, chunkMbs=chunkMbs)
 
                 # Retrieve the most precise axis for future interpolation
                 if raster.width > maxWidth:

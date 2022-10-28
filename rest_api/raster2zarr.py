@@ -9,7 +9,8 @@ from models.rasterDrivers.sentinel2_level2A import Sentinel2_Level2A
 from models.request.rasterFile import RASTERFILE_MODEL
 
 from utils.geometry import bbox2polygon
-from utils.objectStore import createInputObjectStore
+from utils.objectStore import createInputObjectStore, \
+                              getMapperOutputObjectStore
 
 from urllib.parse import urlparse
 
@@ -69,6 +70,8 @@ class ConvertRaster(Resource):
             if "targetResolution" in api.payload \
             else 10
 
+        parsedDestination = urlparse(api.payload["zarrFile"])
+
         datasets: List[xr.Dataset] = []
 
         for idx, rasterFile in enumerate(rasterFiles):
@@ -76,19 +79,25 @@ class ConvertRaster(Resource):
             inputObjectStore = createInputObjectStore(
                     urlparse(rasterFile["rasterPath"]).scheme)
 
-            if rasterFile["rasterFormat"] == FileFormats.SENTINEL2_2A.value:
+            try:
+                if rasterFile["rasterFormat"] == FileFormats.SENTINEL2_2A.value:
 
-                rasterArchive = Sentinel2_Level2A(inputObjectStore,
-                                                  rasterFile["rasterPath"],
-                                                  api.payload["bands"],
-                                                  targetResolution)
-            else:
-                return f"'{rasterFile['rasterFormat']}' not accepted", 500
+                    rasterArchive = Sentinel2_Level2A(inputObjectStore,
+                                                      rasterFile["rasterPath"],
+                                                      api.payload["bands"],
+                                                      targetResolution)
+                else:
+                    return f"'{rasterFile['rasterFormat']}' not accepted", 500
+            except Exception as e:
+                api.logger.error(e)
+                return f"Error when extracting the bands for {rasterFile}", 500
 
             try:
                 api.logger.info(f"[File {idx + 1}] Building ZARR from bands")
+
                 dataset = rasterArchive.convert(
-                    api.payload["zarrFile"] + f"_{idx}", polygon=polygon)
+                  f"{parsedDestination.netloc}/{parsedDestination.path}_{idx}",
+                  polygon=polygon)
                 datasets.append(dataset)
             except Exception as e:
                 api.logger.error(e)
@@ -97,12 +106,19 @@ class ConvertRaster(Resource):
         api.logger.info("Building datacube from the ZARRs")
         if len(datasets) != 1:
             try:
-                xr.combine_by_coords(datasets) \
-                    .to_zarr(api.payload["zarrFile"], mode="w")
+                dataset = xr.combine_by_coords(datasets)
             except Exception as e:
                 api.logger.error(e)
                 return "Error when merging the intermediary files", 500
         else:
-            datasets[0].to_zarr(api.payload["zarrFile"], mode="w")
+            dataset = datasets[0]
+
+        api.logger.info("Writing datacube to Object Store")
+        try:
+            mapper = getMapperOutputObjectStore(api.payload["zarrFile"])
+            dataset.to_zarr(mapper, mode="w")
+        except Exception as e:
+            api.logger.error(e)
+            return "Error when writing the ZARR to the object store", 500
 
         return "Operation completed", 200

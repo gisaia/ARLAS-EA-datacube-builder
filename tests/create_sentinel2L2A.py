@@ -1,18 +1,25 @@
 #!/usr/bin/python3
 
-import os
 import sys
+from pathlib import Path
 
-sys.path.insert(0, os.path.dirname(os.path.realpath(__file__))[:-6])
-from utils.drivers.sentinel2_level2A import Sentinel2_Level2A
+ROOT_PATH = str(Path(__file__).parent.parent)
+sys.path.insert(0, ROOT_PATH)
+from models.rasterDrivers.sentinel2_level2A import Sentinel2_Level2A
+
+from utils.objectStore import createInputObjectStore
 
 
-RASTER_ZIP_PATH = "./data/S2A_MSIL2A_20220809T102041_N0400_R065_T32TML_20220809T180703.zip"
-BANDS = ["B01", "B12"]
+RASTER_URI = "gs://gisaia-arlasea/S2A_MSIL2A_20221017T105041_N0400_R051_T30TXN_20221017T170159"
+BANDS = ["B01"]
 TARGET_RESOLUTION = 30
 
-sentinel2 = Sentinel2_Level2A(RASTER_ZIP_PATH, BANDS, TARGET_RESOLUTION)
+objectStore = createInputObjectStore("gs")
+print("Created objectstore")
+
+sentinel2 = Sentinel2_Level2A(objectStore, RASTER_URI,
+                              BANDS, TARGET_RESOLUTION)
 print(sentinel2.bandsWithResolution)
 print(sentinel2.targetResolution)
 
-sentinel2._extract_metadata()
+sentinel2.buildZarr("output/zarr/testSentinel")

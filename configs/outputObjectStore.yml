@@ -1,0 +1,7 @@
+gs:
+  bucket: "${GS_OUTPUT_BUCKET}"
+  api_key:
+    private_key_id: "${GS_OUTPUT_PRIVATE_KEY_ID}"
+    private_key: "${GS_OUTPUT_PRIVATE_KEY}"
+    client_email: "${GS_OUTPUT_CLIENT_EMAIL}"
+    token_uri: "https://oauth2.googleapis.com/token"

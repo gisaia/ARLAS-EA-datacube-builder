@@ -16,19 +16,15 @@ class AbstractRasterArchive(abc.ABC):
 
     # Loosely inspired from
     # https://gist.github.com/lucaswells/fd2fd73c513872966c1a0257afee1887
-    def convert(self, zarrFilepath, polygon: Polygon = None,
-                chunkMbs=1, logger=None) -> xr.Dataset:
+    def buildZarr(self, zarrPath, polygon: Polygon = None,
+                  chunkMbs=1) -> xr.Dataset:
         """
-        Converts raster file to chunked and compressed zarr array.
+        Build a chunked and compressed zarr from raster files.
 
         Parameters
         ----------
-        rasterArchive : AbstractRasterArchive
-            An abstract object containing the data to put into the ZARR
-        zarrFilepath : str
-            Path to final zarr file with all bands
-        productTime : int
-            The average timestamp of the product
+        zarrPath : str
+            Path to final zarr file with all desired bands
         polygon: Polygon, optional
             Polygon representing the ROI
         chunk_mbs : float, optional
@@ -44,8 +40,6 @@ class AbstractRasterArchive(abc.ABC):
         # Create all the zarr files/stores
         # Finds the most precise grid for the zarrs
         for band, rasterPath in self.bandsToExtract.items():
-            if logger:
-                logger.info(f"Creating ZARR for band {band}")
             with rasterio.open(rasterPath) as rasterReader:
                 # Create Raster object
                 raster = Raster(band, rasterReader, polygon)
@@ -53,8 +47,7 @@ class AbstractRasterArchive(abc.ABC):
 
                 # Create zarr store
                 zarrStore = raster.createZarrStore(
-                    zarrFilepath + "_tmp", self.productTime,
-                    chunkMbs=chunkMbs)
+                    zarrPath, self.productTime, chunkMbs=chunkMbs)
 
                 # Retrieve the most precise axis for future interpolation
                 if raster.width > maxWidth:
@@ -65,9 +58,6 @@ class AbstractRasterArchive(abc.ABC):
                     _, ymin, _, ymax = raster.bounds
 
                 zarrs.append(zarrStore)
-        if logger:
-            logger.info("Created ZARR Stores")
-            logger.info("Interpolating ZARRs on same grid")
 
         # Retrieve the zarr stores as xarray objects that are on a same grid
         interpDataset = xr.Dataset({
@@ -83,5 +73,4 @@ class AbstractRasterArchive(abc.ABC):
         del zarrs
 
         # Merge all bands and remove temporary zarrs
-        return xr.merge(allZarrs)  # .to_zarr(zarrFilepath, mode="w")
-        # shutil.rmtree(zarrFilepath + "_tmp")
+        return xr.merge(allZarrs)

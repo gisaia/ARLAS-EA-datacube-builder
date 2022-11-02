@@ -1,0 +1,7 @@
+gs:
+  bucket: "${GS_INPUT_BUCKET}"
+  api_key:
+    private_key_id: "${GS_INPUT_PRIVATE_KEY_ID}"
+    private_key: "${GS_INPUT_PRIVATE_KEY}"
+    client_email: "${GS_INPUT_CLIENT_EMAIL}"
+    token_uri: "https://oauth2.googleapis.com/token"

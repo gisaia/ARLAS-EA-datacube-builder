@@ -8,6 +8,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
         }
     ],
     "dataCubePath": "gs://gisaia-datacube/S2A_MSIL2A_20221017T105041_N0400_R051_T30TXN_20221017T170159_B01",
-    "roi": "640000.0,4720000.0,700000.0,4780000.0",
-    "bands": ["B01"]
+    "roi": "-1.17,42.37,-0.32,43.85",
+    "bands": ["B01"],
+    "targetResolution": 60
     }' http://localhost:5000/datacube/build

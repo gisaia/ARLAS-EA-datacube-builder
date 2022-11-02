@@ -16,8 +16,8 @@ class AbstractRasterArchive(abc.ABC):
 
     # Loosely inspired from
     # https://gist.github.com/lucaswells/fd2fd73c513872966c1a0257afee1887
-    def buildZarr(self, zarrPath, polygon: Polygon = None,
-                  chunkMbs=1) -> xr.Dataset:
+    def buildZarr(self, zarrPath, targetProjection: str,
+                  polygon: Polygon = None, chunkMbs=1) -> xr.Dataset:
         """
         Build a chunked and compressed zarr from raster files.
 
@@ -42,7 +42,7 @@ class AbstractRasterArchive(abc.ABC):
         for band, rasterPath in self.bandsToExtract.items():
             with rasterio.open(rasterPath) as rasterReader:
                 # Create Raster object
-                raster = Raster(band, rasterReader, polygon)
+                raster = Raster(band, rasterReader, targetProjection, polygon)
                 dtype = raster.dtype
 
                 # Create zarr store

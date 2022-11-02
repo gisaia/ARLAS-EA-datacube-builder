@@ -17,8 +17,8 @@ from urllib.parse import urlparse
 api = Namespace("datacube",
                 description="Build a data cube from raster files")
 
-DATACUBE_BUILD_MODEL = api.model(
-    "DatacubeBuild",
+DATACUBE_BUILD_REQUEST = api.model(
+    "DatacubeBuildRequest",
     {
         "rasterFiles": fields.List(
             fields.Nested(RASTERFILE_MODEL),
@@ -57,7 +57,7 @@ class DataCube_Build(Resource):
         'bands': 'The list of bands to extract',
         'targetResolution': 'The requested end resolution in meters'
         })
-    @api.expect(DATACUBE_BUILD_MODEL)
+    @api.expect(DATACUBE_BUILD_REQUEST)
     def post(self):
         api.logger.info("[POST] /build")
         rasterFiles: List = api.payload["rasterFiles"]

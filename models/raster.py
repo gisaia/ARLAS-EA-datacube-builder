@@ -93,7 +93,9 @@ class Raster:
         self.rasterData = projectedRasterData
 
     def createZarrStore(self, zarrRootPath: str,
-                        productTime: int, chunkMbs=1) -> zarr.DirectoryStore:
+                        productTimestamp: int,
+                        rasterTimestamp: int,
+                        chunkMbs=1) -> zarr.DirectoryStore:
 
         store = zarr.DirectoryStore(f"{zarrRootPath}/{self.band}")
 
@@ -129,7 +131,7 @@ class Raster:
             overwrite=True,
             path="t"
         )
-        t[:] = [productTime]
+        t[:] = [rasterTimestamp]
         t.attrs['_ARRAY_DIMENSIONS'] = ['t']
 
         # Create zarr array for each band required
@@ -150,6 +152,7 @@ class Raster:
         zarray.attrs['transform'] = self.transform
         zarray.attrs['crs'] = self.crs
         zarray.attrs['_ARRAY_DIMENSIONS'] = ['x', 'y', 't']
+        zarray.attrs['productTimestamp'] = productTimestamp
 
         zarray[:, :, 0] = np.flip(np.transpose(self.rasterData), 1)
 

@@ -13,6 +13,11 @@ RASTERFILE_MODEL = Model(
             required=True,
             readonly=True,
             description="The path to the raster file."
+        ),
+        "rasterTimestamp": fields.Integer(
+            required=True,
+            readonly=True,
+            description="The timestamp of the temporal bucket in which the raster is."
         )
     }
 )

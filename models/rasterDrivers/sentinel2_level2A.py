@@ -2,7 +2,6 @@ import re
 from datetime import datetime
 import zipfile
 import smart_open as so
-
 from dateutil import parser
 from lxml import etree
 
@@ -22,8 +21,9 @@ LOW_RESOLUTION = 60
 class Sentinel2_Level2A(AbstractRasterArchive):
 
     def __init__(self, objectStore: AbstractObjectStore, rasterURI, bands,
-                 targetResolution, zipExtractPath="tmp/"):
+                 targetResolution, rasterTimestamp, zipExtractPath="tmp/"):
 
+        self.rasterTimestamp = rasterTimestamp
         self._findBandsResolution(bands, targetResolution)
         self._extract_metadata(objectStore, rasterURI, bands, zipExtractPath)
 

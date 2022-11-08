@@ -47,8 +47,6 @@ DATACUBE_BUILD_REQUEST = api.model(
 )
 
 ZIP_EXTRACT_PATH = "tmp/"
-PRODUCT_START_TIME = "n1:General_Info/Product_Info/PRODUCT_START_TIME"
-PRODUCT_STOP_TIME = "n1:General_Info/Product_Info/PRODUCT_STOP_TIME"
 
 
 @api.route('/build')
@@ -90,11 +88,10 @@ class DataCube_Build(Resource):
 
             try:
                 if rasterFile["rasterFormat"] == FileFormats.SENTINEL2_2A.value:
-
-                    rasterArchive = Sentinel2_Level2A(inputObjectStore,
-                                                      rasterFile["rasterPath"],
-                                                      api.payload["bands"],
-                                                      targetResolution)
+                    rasterArchive = Sentinel2_Level2A(
+                        inputObjectStore, rasterFile["rasterPath"],
+                        api.payload["bands"], targetResolution,
+                        rasterFile["rasterTimestamp"])
                 else:
                     return f"'{rasterFile['rasterFormat']}' not accepted", 500
             except Exception as e:

@@ -13,6 +13,7 @@ class AbstractRasterArchive(abc.ABC):
     bandsToExtract: Dict[str, str]
     productTime: int
     targetResolution: float
+    rasterTimestamp: int
 
     # Loosely inspired from
     # https://gist.github.com/lucaswells/fd2fd73c513872966c1a0257afee1887
@@ -47,7 +48,8 @@ class AbstractRasterArchive(abc.ABC):
 
                 # Create zarr store
                 zarrStore = raster.createZarrStore(
-                    zarrPath, self.productTime, chunkMbs=chunkMbs)
+                    zarrPath, self.productTime,
+                    self.rasterTimestamp, chunkMbs=chunkMbs)
 
                 # Retrieve the most precise axis for future interpolation
                 if raster.width > maxWidth:

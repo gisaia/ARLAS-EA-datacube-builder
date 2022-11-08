@@ -38,6 +38,10 @@ DATACUBE_BUILD_REQUEST = api.model(
         "targetResolution": fields.Integer(
             readonly=True,
             description="The requested end resolution in meters"
+        ),
+        "targetProjection": fields.String(
+            readonly=True,
+            description="The targeted projection. By default is 'EPSG:4326'."
         )
     }
 )
@@ -55,7 +59,8 @@ class DataCube_Build(Resource):
         'dataCubePath': 'The Object Store path to the data cube',
         'roi': 'The Region Of Interest (bbox) to extract',
         'bands': 'The list of bands to extract',
-        'targetResolution': 'The requested end resolution in meters'
+        'targetResolution': 'The requested end resolution in meters',
+        'tragetProjection': 'The targeted projection. By default is "EPSG:4326".'
         })
     @api.expect(DATACUBE_BUILD_REQUEST)
     def post(self):
@@ -69,6 +74,10 @@ class DataCube_Build(Resource):
         targetResolution = api.payload["targetResolution"] \
             if "targetResolution" in api.payload \
             else 10
+
+        targetProjection = api.payload["tragetProjection"] \
+            if "tragetProjection" in api.payload \
+            else "EPSG:4326"
 
         parsedDestination = urlparse(api.payload["dataCubePath"])
 
@@ -97,7 +106,7 @@ class DataCube_Build(Resource):
 
                 dataset = rasterArchive.buildZarr(
                   f"{parsedDestination.netloc}/{parsedDestination.path}_{idx}",
-                  polygon=polygon)
+                  targetProjection, polygon=polygon)
                 datasets.append(dataset)
             except Exception as e:
                 api.logger.error(e)

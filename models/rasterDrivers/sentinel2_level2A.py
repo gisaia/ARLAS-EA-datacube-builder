@@ -1,6 +1,7 @@
 import re
-from datetime import datetime
 import zipfile
+from datetime import datetime
+
 import smart_open as so
 from dateutil import parser
 from lxml import etree
@@ -125,3 +126,6 @@ class Sentinel2_Level2A(AbstractRasterArchive):
                             rasterZip.extract(fileName, zipExtractPath)
                             self.bandsToExtract[band] = zipExtractPath + \
                                 fileName
+
+                if len(bands) != len(self.bandsToExtract):
+                    raise FileNotFoundError("Some of the required files were not found")

@@ -9,20 +9,7 @@ from rasterio.warp import calculate_default_transform, reproject, \
     Resampling, transform_bounds
 
 from utils.geometry import projectPolygon
-
-DTYPE_BYTES = {
-    'byte': 1,
-    'uint16': 2,
-    'int16': 2,
-    'uint32': 4,
-    'int32': 4,
-    'float32': 4,
-    'float64': 8,
-}
-
-
-def getChunkSize(dtype: str, chunkMbs: float):
-    return int((chunkMbs * 1e6/DTYPE_BYTES[dtype])**0.5)
+from utils.xarray import getChunkShape
 
 
 class Raster:
@@ -34,6 +21,7 @@ class Raster:
     transform: Affine
     dtype: str
     crs: str
+    metadata: dict
 
     def __init__(self, band: str, rasterReader: DatasetReader,
                  targetProjection, polygon: Polygon = None):
@@ -99,9 +87,7 @@ class Raster:
 
         store = zarr.DirectoryStore(f"{zarrRootPath}/{self.band}")
 
-        chunkShape = (getChunkSize(self.dtype, chunkMbs),
-                      getChunkSize(self.dtype, chunkMbs), 1)
-        # TODO: chunk size is not the correct one in the end
+        chunkShape = getChunkShape(self.dtype, chunkMbs)
 
         xmin, ymin, xmax, ymax = self.bounds
         x = zarr.create(
@@ -145,14 +131,16 @@ class Raster:
         )
 
         # Add band metadata to the zarr file
-        zarray.attrs['width'] = self.width
-        zarray.attrs['height'] = self.height
-        zarray.attrs['dtype'] = self.dtype
-        zarray.attrs['bounds'] = self.bounds
-        zarray.attrs['transform'] = self.transform
-        zarray.attrs['crs'] = self.crs
         zarray.attrs['_ARRAY_DIMENSIONS'] = ['x', 'y', 't']
-        zarray.attrs['productTimestamp'] = productTimestamp
+
+        self.metadata = {}
+        self.metadata['width'] = self.width
+        self.metadata['height'] = self.height
+        self.metadata['dtype'] = self.dtype
+        self.metadata['bounds'] = self.bounds
+        self.metadata['transform'] = self.transform
+        self.metadata['crs'] = self.crs
+        self.metadata['productTimestamp'] = productTimestamp
 
         zarray[:, :, 0] = np.flip(np.transpose(self.rasterData), 1)
 

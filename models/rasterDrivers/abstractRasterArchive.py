@@ -6,7 +6,8 @@ import rasterio
 import xarray as xr
 from shapely.geometry import Polygon
 
-from models.raster import Raster, getChunkSize
+from models.raster import Raster
+from utils.xarray import getChunkShape
 
 
 class AbstractRasterArchive(abc.ABC):
@@ -60,6 +61,7 @@ class AbstractRasterArchive(abc.ABC):
                     _, ymin, _, ymax = raster.bounds
 
                 zarrs.append(zarrStore)
+                metadata = raster.metadata
 
         # Retrieve the zarr stores as xarray objects that are on a same grid
         interpDataset = xr.Dataset({
@@ -70,9 +72,10 @@ class AbstractRasterArchive(abc.ABC):
             xrZarr = xr.open_zarr(zarrStore)
             if xrZarr.dims["x"] != maxWidth or xrZarr.dims["y"] != maxHeight:
                 xrZarr = xrZarr.interp_like(interpDataset) \
-                            .chunk(getChunkSize(dtype, chunkMbs))
+                            .chunk(getChunkShape(dtype, chunkMbs))
             allZarrs.append(xrZarr)
         del zarrs
 
         # Merge all bands and remove temporary zarrs
-        return xr.merge(allZarrs)
+        mergedBands: xr.Dataset = xr.merge(allZarrs)
+        return mergedBands.assign_attrs(metadata)

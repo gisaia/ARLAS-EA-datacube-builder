@@ -11,7 +11,7 @@ sys.path.insert(0, ROOT_PATH)
 from models.objectStoreDrivers.gcsObjectStore import GCSObjectStore
 
 config = EnvYAML(ROOT_PATH + "/configs/inputObjectStore.yml")
-rasterURI = "gs://gisaia-arlasea/S2A_MSIL2A_20221017T105041_N0400_R051_T30TXN_20221017T170159"
+rasterURI = "gs://gisaia-arlasea/S2A_MSIL2A_20220904T103641_N0400_R008_T33WVN_20220904T160606"
 
 objectStore = GCSObjectStore(config["gs.api_key"])
 params = {'client': objectStore.client}

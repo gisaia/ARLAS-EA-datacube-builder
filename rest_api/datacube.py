@@ -86,6 +86,8 @@ class DataCube_Build(Resource):
         api.logger.info("Building datacube from the ZARRs")
         if len(datasets) != 1:
             try:
+                # Group the datasets by timestamp to merge them
+                temporalBuckets: dict[float, List] = {}
                 # Find the centermost granule based on ROI and maximum bounds
                 xmin, ymin, xmax, ymax = np.inf, np.inf, -np.inf, -np.inf
                 roiCentroid: Point = roi.centroid
@@ -103,6 +105,12 @@ class DataCube_Build(Resource):
                     xmax = max(xmax, dsBounds[2])
                     ymax = max(ymax, dsBounds[3])
 
+                    # Add dataset to a temporal bucket
+                    if ds.get("t").values[0] in temporalBuckets.keys():
+                        temporalBuckets[ds.get("t").values[0]].append(ds)
+                    else:
+                        temporalBuckets[ds.get("t").values[0]] = [ds]
+
                 # Generate a grid extending the center granule
                 lonStep = datasets[centermostGranuleDSindex].get("x") \
                                                             .diff("x").mean()
@@ -113,13 +121,16 @@ class DataCube_Build(Resource):
                     datasets[centermostGranuleDSindex].get("y"), latStep,
                     (xmin, ymin, xmax, ymax))
 
-                # Starting with the centermost granule, merge datasets
-                # TODO: group datasets by timestamp
-                mergedDataset = datasets[centermostGranuleDSindex]
-                for i in range(len(datasets)):
-                    if i != centermostGranuleDSindex:
+                # For each time bucket, create a mosaick of the datasets
+                timestamps = list(temporalBuckets.keys())
+                timestamps.sort()
+
+                mergedDSPerBucket = []
+                for t in timestamps:
+                    mergedDataset = None
+                    for dataset in temporalBuckets[t]:
                         # Interpolate the granule with new grid on its extent
-                        granuleBounds = getBounds(datasets[i])
+                        granuleBounds = getBounds(dataset)
                         granuleLon = lon[(lon[:] >= granuleBounds[0])
                                          & (lon[:] <= granuleBounds[2])]
                         granuleLat = lat[(lat[:] >= granuleBounds[1])
@@ -129,23 +140,28 @@ class DataCube_Build(Resource):
                             granuleBounds)
 
                         grid = xr.Dataset({"x": granuleLon, "y": granuleLat})
-                        ds = datasets[i].interp_like(grid, method="nearest")
+                        ds = dataset.interp_like(grid, method="nearest")
 
-                        mergedDataset = mergeDatasets(mergedDataset, ds)
-                # TODO: fuse merged granules along the time dimension
+                        if mergedDataset:
+                            mergedDataset = mergeDatasets(mergedDataset, ds)
+                        else:
+                            mergedDataset = ds
+                    mergedDSPerBucket.append(mergedDataset.copy(deep=True))
+
+                dataCube = xr.concat(mergedDSPerBucket, dim="t")
             except Exception as e:
                 api.logger.error(e)
                 return "Error when merging the intermediary files", 500
         else:
-            mergedDataset = datasets[0]
+            dataCube = datasets[0]
         # TODO: merge manually dataset attributes
 
         api.logger.info("Writing datacube to Object Store")
         try:
             mapper = getMapperOutputObjectStore(api.payload["dataCubePath"])
-            chunkSize = getChunkSize(mergedDataset.attrs['dtype'])
-            mergedDataset.chunk({"x": chunkSize, "y": chunkSize, "t": 1}) \
-                         .to_zarr(mapper, mode="w")
+            chunkSize = getChunkSize(dataCube.attrs['dtype'])
+            dataCube.chunk({"x": chunkSize, "y": chunkSize, "t": 1}) \
+                    .to_zarr(mapper, mode="w")
         except Exception as e:
             api.logger.error(e)
             return "Error when writing the ZARR to the object store", 500

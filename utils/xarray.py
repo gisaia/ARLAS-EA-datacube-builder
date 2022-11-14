@@ -23,7 +23,7 @@ DTYPE_BYTES = {
 }
 
 
-def getChunkSize(dtype: str, chunkMbs: float):
+def getChunkSize(dtype: str, chunkMbs: float = 1):
     # TODO: chunk size is not the correct one in the end
     return int((chunkMbs * 1e6/DTYPE_BYTES[dtype])**0.5)
 

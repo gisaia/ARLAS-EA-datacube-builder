@@ -11,6 +11,11 @@ curl -X POST -H "Content-Type: application/json" -d '{
             "rasterFormat": "Sentinel2-2A",
             "rasterPath": "gs://gisaia-arlasea/S2A_MSIL2A_20221017T105041_N0400_R051_T30TXN_20221017T170159",
             "rasterTimestamp": 1662249600
+        },
+        {
+            "rasterFormat": "Sentinel2-2A",
+            "rasterPath": "gs://gisaia-arlasea/S2A_MSIL2A_20221017T105041_N0400_R051_T30TXN_20221017T170159",
+            "rasterTimestamp": 1662249700
         }
         
     ],

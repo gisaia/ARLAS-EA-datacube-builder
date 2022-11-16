@@ -9,6 +9,7 @@ from shapely.geometry import Point
 from models.rasterDrivers.fileFormats import FileFormats
 from models.rasterDrivers.sentinel2_level2A import Sentinel2_Level2A
 from models.request.datacube_build import DATACUBE_BUILD_REQUEST
+from models.request.rasterFile import RASTERFILE_MODEL
 
 from utils.geometry import bbox2polygon, completeGrid
 from utils.objectStore import createInputObjectStore, \
@@ -17,8 +18,10 @@ from utils.xarray import getBounds, getChunkSize, mergeDatasets
 
 from urllib.parse import urlparse
 
-api = Namespace("datacube",
+api = Namespace("cube",
                 description="Build a data cube from raster files")
+api.models[DATACUBE_BUILD_REQUEST.name] = DATACUBE_BUILD_REQUEST
+api.models[RASTERFILE_MODEL.name] = RASTERFILE_MODEL
 
 ZIP_EXTRACT_PATH = "tmp/"
 
@@ -26,18 +29,10 @@ ZIP_EXTRACT_PATH = "tmp/"
 @api.route('/build')
 class DataCube_Build(Resource):
 
-    @api.doc(params={
-        'rasterFile': 'The raster files to build the data cube from',
-        'dataCubePath': 'The Object Store path to the data cube',
-        'roi': 'The Region Of Interest (bbox) to extract',
-        'bands': 'The list of bands to extract',
-        'targetResolution': 'The requested end resolution in meters',
-        'tragetProjection': 'The targeted projection. Default :"EPSG:4326".'
-        })
     @api.expect(DATACUBE_BUILD_REQUEST)
     def post(self):
         api.logger.info("[POST] /build")
-        rasterFiles: List = api.payload["rasterFiles"]
+        rasterFiles: List = api.payload["rasterCompositions"]
 
         roi = bbox2polygon(api.payload["roi"]) \
             if "roi" in api.payload \
@@ -166,4 +161,4 @@ class DataCube_Build(Resource):
             api.logger.error(e)
             return "Error when writing the ZARR to the object store", 500
 
-        return "Operation completed", 200
+        return "Datacube built", 200

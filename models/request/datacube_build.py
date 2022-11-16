@@ -5,7 +5,7 @@ from .rasterFile import RASTERFILE_MODEL
 DATACUBE_BUILD_REQUEST = Model(
     "DatacubeBuildRequest",
     {
-        "rasterFiles": fields.List(
+        "rasterCompositions": fields.List(
             fields.Nested(RASTERFILE_MODEL),
             required=True,
             readonly=True),
@@ -16,7 +16,7 @@ DATACUBE_BUILD_REQUEST = Model(
         "roi": fields.String(
             required=True,
             readonly=True,
-            description="The BBox to extract"),
+            description="The Region Of Interest (bbox) to extract"),
         "bands": fields.List(
             fields.String,
             readonly=True,
@@ -27,7 +27,7 @@ DATACUBE_BUILD_REQUEST = Model(
         ),
         "targetProjection": fields.String(
             readonly=True,
-            description="The targeted projection. By default is 'EPSG:4326'."
+            description="The targeted projection. Default :'EPSG:4326'."
         )
     }
 )

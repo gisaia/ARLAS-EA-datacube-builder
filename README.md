@@ -21,7 +21,7 @@ Docker or python3
 
 ```shell
 export DOCKER_DEFAULT_PLATFORM=linux/amd64 # For MacOSX
-docker build -t ARLAS-datacube-builder:latest .
+docker build -t arlas-datacube-builder:latest .
 ```
 
 ### Starting the REST Service
@@ -31,4 +31,3 @@ docker run --env-file credentials \
     -p 8080:5000 \
     arlas-datacube-builder:latest
 ```
-

@@ -19,7 +19,7 @@ MED_RESOLUTION = 20
 LOW_RESOLUTION = 60
 
 
-class Sentinel2_Level2A(AbstractRasterArchive):
+class Sentinel2_Level2A_safe(AbstractRasterArchive):
 
     def __init__(self, objectStore: AbstractObjectStore, rasterURI, bands,
                  targetResolution, rasterTimestamp, zipExtractPath="tmp/"):

@@ -7,7 +7,7 @@ from flask_restx import Namespace, Resource
 from shapely.geometry import Point
 
 from models.rasterDrivers.archiveTypes import ArchiveTypes
-from models.rasterDrivers.sentinel2_level2A import Sentinel2_Level2A
+from models.rasterDrivers.sentinel2_level2A_safe import Sentinel2_Level2A_safe
 from models.rasterDrivers.sentinel2_level2A_theia \
     import Sentinel2_Level2A_Theia
 from models.request.datacube_build import DATACUBE_BUILD_REQUEST
@@ -72,7 +72,7 @@ class DataCube_Build(Resource):
                 archiveType = rasterFile["source"] + "-" + rasterFile["format"]
                 try:
                     if archiveType == ArchiveTypes.S2L2A.value:
-                        rasterArchive = Sentinel2_Level2A(
+                        rasterArchive = Sentinel2_Level2A_safe(
                             inputObjectStore, rasterFile["path"],
                             api.payload["bands"], targetResolution,
                             rasterGroup["timestamp"])
@@ -124,7 +124,8 @@ class DataCube_Build(Resource):
                 len(rasterGroups[0]["rasters"]) == 1):
             try:
                 # Generate a grid extending the center granule
-                centerMostGranuleDS = groupedDatasets[centerMostGranule["group"]][centerMostGranule["index"]]
+                centerMostGranuleDS = groupedDatasets[
+                    centerMostGranule["group"]][centerMostGranule["index"]]
                 lonStep = centerMostGranuleDS.get("x").diff("x").mean()
                 latStep = centerMostGranuleDS.get("y").diff("y").mean()
 

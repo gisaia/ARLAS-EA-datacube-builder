@@ -1,4 +1,5 @@
 import abc
+from dataclasses import dataclass
 from typing import Dict
 
 import numpy as np
@@ -10,6 +11,7 @@ from models.raster import Raster
 from utils.xarray import getChunkShape
 
 
+@dataclass
 class AbstractRasterArchive(abc.ABC):
     bandsToExtract: Dict[str, str]
     productTime: int

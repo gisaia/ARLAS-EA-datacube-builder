@@ -1,11 +1,16 @@
 #!/bin/sh
 
 curl -X POST -H "Content-Type: application/json" -d '{
-    "rasterCompositions": [
+    "composition": [
         {
-            "rasterFormat": "Sentinel2-2A-Theia",
-            "rasterPath": "gs://gisaia-arlasea/SENTINEL2A_20221106-105923-597_L2A_T30TXN_D",
-            "rasterTimestamp": 1667732363
+            "rasters": [
+                {
+                    "format": "2A-Theia",
+                    "source": "Sentinel2",
+                    "path": "gs://gisaia-arlasea/SENTINEL2A_20221106-105923-597_L2A_T30TXN_D"
+                }
+            ],
+            "timestamp": 1667732363
         }
     ],
     "dataCubePath": "gs://gisaia-datacube/test_theia",

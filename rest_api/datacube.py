@@ -8,6 +8,8 @@ from shapely.geometry import Point
 
 from models.rasterDrivers.fileFormats import FileFormats
 from models.rasterDrivers.sentinel2_level2A import Sentinel2_Level2A
+from models.rasterDrivers.sentinel2_level2A_theia \
+    import Sentinel2_Level2A_Theia
 from models.request.datacube_build import DATACUBE_BUILD_REQUEST
 from models.request.rasterFile import RASTERFILE_MODEL
 
@@ -56,8 +58,13 @@ class DataCube_Build(Resource):
                     urlparse(rasterFile["rasterPath"]).scheme)
 
             try:
-                if rasterFile["rasterFormat"] == FileFormats.SENTINEL2_2A.value:
+                if rasterFile["rasterFormat"] == FileFormats.S2L2A.value:
                     rasterArchive = Sentinel2_Level2A(
+                        inputObjectStore, rasterFile["rasterPath"],
+                        api.payload["bands"], targetResolution,
+                        rasterFile["rasterTimestamp"])
+                elif rasterFile["rasterFormat"] == FileFormats.S2L2A_THEIA.value:
+                    rasterArchive = Sentinel2_Level2A_Theia(
                         inputObjectStore, rasterFile["rasterPath"],
                         api.payload["bands"], targetResolution,
                         rasterFile["rasterTimestamp"])

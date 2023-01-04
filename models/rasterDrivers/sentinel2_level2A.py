@@ -60,8 +60,8 @@ class Sentinel2_Level2A(AbstractRasterArchive):
             elif band == "B09":
                 self.bandsWithResolution[band] = LOW_RESOLUTION
             elif band == "B10":
-                raise FileNotFoundError("Band B10 does not exist \
-                                        in Sentinel2-L2A files")
+                raise FileNotFoundError("Band 'B10' does not exist" +
+                                        "in Sentinel2-L2A files")
             elif band == "B11":
                 self._bandAvailableMedAndLowResolution(band)
             elif band == "B12":
@@ -115,6 +115,7 @@ class Sentinel2_Level2A(AbstractRasterArchive):
                         self.productTime = int(
                             (datetime.timestamp(startTime)
                              + datetime.timestamp(endTime)) / 2)
+                        break
 
                 for band in bands:
                     bandResolution = self.bandsWithResolution[band]
@@ -128,4 +129,5 @@ class Sentinel2_Level2A(AbstractRasterArchive):
                                 fileName
 
                 if len(bands) != len(self.bandsToExtract):
-                    raise FileNotFoundError("Some of the required files were not found")
+                    raise FileNotFoundError("Some of the required files" +
+                                            "were not found")

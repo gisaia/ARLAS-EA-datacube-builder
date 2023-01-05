@@ -3,7 +3,6 @@ import zarr
 from rasterio.coords import BoundingBox
 from rasterio.io import DatasetReader
 from rasterio.mask import mask
-from rasterio import Affine
 from shapely.geometry import Polygon
 from rasterio.warp import calculate_default_transform, reproject, \
     Resampling, transform_bounds
@@ -13,15 +12,6 @@ from utils.xarray import getChunkShape
 
 
 class Raster:
-    band: str
-    rasterData: np.array
-    width: int
-    height: int
-    bounds: BoundingBox
-    transform: Affine
-    dtype: str
-    crs: str
-    metadata: dict
 
     def __init__(self, band: str, rasterReader: DatasetReader,
                  targetProjection, polygon: Polygon = None):
@@ -80,6 +70,8 @@ class Raster:
                   resampling=Resampling.nearest)
         self.rasterData = projectedRasterData
 
+        self.metadata = {}
+
     def createZarrStore(self, zarrRootPath: str,
                         productTimestamp: int,
                         rasterTimestamp: int,
@@ -133,7 +125,6 @@ class Raster:
         # Add band metadata to the zarr file
         zarray.attrs['_ARRAY_DIMENSIONS'] = ['x', 'y', 't']
 
-        self.metadata = {}
         self.metadata['width'] = self.width
         self.metadata['height'] = self.height
         self.metadata['dtype'] = self.dtype

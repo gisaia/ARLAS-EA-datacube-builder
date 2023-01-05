@@ -94,7 +94,7 @@ class DataCube_Build(Resource):
                     # Build the zarr dataset and add it to its group's list
                     dataset = rasterArchive.buildZarr(
                         f"{parsedDestination.netloc}/" +
-                        "{parsedDestination.path}_{idx}",
+                        f"{parsedDestination.path}_{idx}",
                         targetProjection, polygon=roi)
                     groupedDatasets[rasterGroup["timestamp"]].append(dataset)
 

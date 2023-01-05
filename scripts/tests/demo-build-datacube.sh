@@ -53,7 +53,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
             "timestamp": 1664928000
         }
     ],
-    "dataCubePath": "gs://gisaia-datacube/demo_datacube",
+    "dataCubePath": "demo_datacube",
     "roi": "-1.738586,42.688794,-1.505968,42.87091",
     "bands": ["B05"],
     "targetResolution": 20

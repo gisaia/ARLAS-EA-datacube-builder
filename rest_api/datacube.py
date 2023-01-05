@@ -50,8 +50,6 @@ class DataCube_Build(Resource):
             if "tragetProjection" in api.payload \
             else "EPSG:4326"
 
-        parsedDestination = urlparse(api.payload["dataCubePath"])
-
         groupedDatasets: dict[float, List[xr.Dataset]] = {}
 
         centerMostGranule = {"group": float, "index": int}
@@ -93,8 +91,7 @@ class DataCube_Build(Resource):
 
                     # Build the zarr dataset and add it to its group's list
                     dataset = rasterArchive.buildZarr(
-                        f"{parsedDestination.netloc}/" +
-                        f"{parsedDestination.path}_{idx}",
+                        f'{api.payload["dataCubePath"]}_{idx}',
                         targetProjection, polygon=roi)
                     groupedDatasets[rasterGroup["timestamp"]].append(dataset)
 

@@ -1,4 +1,3 @@
-from urllib.parse import urlparse
 from models.objectStoreDrivers.gcsObjectStore import GCSObjectStore
 from models.objectStoreDrivers.abstractObjectStore import AbstractObjectStore
 
@@ -20,8 +19,8 @@ def createInputObjectStore(objStoreType) -> AbstractObjectStore:
             f"Object store {objStoreType} not implemented")
 
 
+# By default uses GCS as an object store
 def getMapperOutputObjectStore(destination) -> FSMap:
-    destinationParsed = urlparse(destination)
     return get_mapper(
-        destination, mode="w",
-        token=OUTPUT_OBJECT_STORE[f"{destinationParsed.scheme}.api_key"])
+        f"gs://{OUTPUT_OBJECT_STORE['gs.bucket']}/{destination}", mode="w",
+        token=OUTPUT_OBJECT_STORE["gs.api_key"])

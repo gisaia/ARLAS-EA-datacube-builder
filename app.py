@@ -28,9 +28,9 @@ if __name__ == "__main__":
     parser.add_argument("--host", dest="host",
                         default="127.0.0.1",
                         help="Set the host of the app. By default localhost.")
-    
+
     args = parser.parse_args()
     loggerLevel = logging.INFO if args.isLogger else logging.ERROR
-    
+
     app = App(loggerLevel)
     app.run(debug=args.debug, host=args.host)

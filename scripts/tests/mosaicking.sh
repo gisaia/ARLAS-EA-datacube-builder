@@ -29,7 +29,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
         }
         
     ],
-    "dataCubePath": "gs://gisaia-datacube/mosaicking",
+    "dataCubePath": "mosaicking",
     "roi": "-1.17,42.5,0.5,43.85",
     "bands": ["B01"],
     "targetResolution": 20

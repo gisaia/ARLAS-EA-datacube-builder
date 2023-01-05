@@ -13,7 +13,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
             "timestamp": 1667732363
         }
     ],
-    "dataCubePath": "gs://gisaia-datacube/test_theia",
+    "dataCubePath": "test_theia",
     "roi": "-1.0,42.688794,-0.5,42.87091",
     "bands": ["B5"],
     "targetResolution": 20

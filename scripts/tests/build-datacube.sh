@@ -1,15 +1,20 @@
 #!/bin/sh
 
 curl -X POST -H "Content-Type: application/json" -d '{
-    "rasterCompositions": [
+    "composition": [
         {
-            "rasterFormat": "Sentinel2-2A",
-            "rasterPath": "gs://gisaia-arlasea/S2A_MSIL2A_20221017T105041_N0400_R051_T30TXN_20221017T170159",
-            "rasterTimestamp": 1665964800
+            "rasters": [
+                {
+                    "format": "2A-Theia",
+                    "source": "Sentinel2",
+                    "path": "gs://gisaia-arlasea/SENTINEL2A_20221106-105923-597_L2A_T30TXN_D"
+                }
+            ],
+            "timestamp": 1667732363
         }
     ],
-    "dataCubePath": "gs://gisaia-datacube/S2A_MSIL2A_20221017T105041_N0400_R051_T30TXN_20221017T170159_B01",
-    "roi": "-1.17,42.37,-0.32,43.85",
-    "bands": ["B01"],
-    "targetResolution": 60
+    "dataCubePath": "test_theia",
+    "roi": "-1.0,42.688794,-0.5,42.87091",
+    "bands": ["B5"],
+    "targetResolution": 20
     }' http://localhost:5000/cube/build

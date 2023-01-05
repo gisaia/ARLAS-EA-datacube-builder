@@ -1,12 +1,12 @@
 from flask_restx import Model, fields
 
-from .rasterFile import RASTERFILE_MODEL
+from .rasterGroup import RASTERGROUP_MODEL
 
 DATACUBE_BUILD_REQUEST = Model(
     "DatacubeBuildRequest",
     {
-        "rasterCompositions": fields.List(
-            fields.Nested(RASTERFILE_MODEL),
+        "composition": fields.List(
+            fields.Nested(RASTERGROUP_MODEL),
             required=True,
             readonly=True),
         "dataCubePath": fields.String(
@@ -27,7 +27,7 @@ DATACUBE_BUILD_REQUEST = Model(
         ),
         "targetProjection": fields.String(
             readonly=True,
-            description="The targeted projection. Default :'EPSG:4326'."
+            description="The targeted projection. Default: 'EPSG:4326'."
         )
     }
 )

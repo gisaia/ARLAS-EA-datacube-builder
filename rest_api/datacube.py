@@ -6,9 +6,12 @@ import xarray as xr
 from flask_restx import Namespace, Resource
 from shapely.geometry import Point
 
-from models.rasterDrivers.fileFormats import FileFormats
-from models.rasterDrivers.sentinel2_level2A import Sentinel2_Level2A
+from models.rasterDrivers.archiveTypes import ArchiveTypes
+from models.rasterDrivers.sentinel2_level2A_safe import Sentinel2_Level2A_safe
+from models.rasterDrivers.sentinel2_level2A_theia \
+    import Sentinel2_Level2A_Theia
 from models.request.datacube_build import DATACUBE_BUILD_REQUEST
+from models.request.rasterGroup import RASTERGROUP_MODEL
 from models.request.rasterFile import RASTERFILE_MODEL
 
 from utils.geometry import bbox2polygon, completeGrid
@@ -21,6 +24,7 @@ from urllib.parse import urlparse
 api = Namespace("cube",
                 description="Build a data cube from raster files")
 api.models[DATACUBE_BUILD_REQUEST.name] = DATACUBE_BUILD_REQUEST
+api.models[RASTERGROUP_MODEL.name] = RASTERGROUP_MODEL
 api.models[RASTERFILE_MODEL.name] = RASTERFILE_MODEL
 
 ZIP_EXTRACT_PATH = "tmp/"
@@ -32,7 +36,7 @@ class DataCube_Build(Resource):
     @api.expect(DATACUBE_BUILD_REQUEST)
     def post(self):
         api.logger.info("[POST] /build")
-        rasterFiles: List = api.payload["rasterCompositions"]
+        rasterGroups: List = api.payload["composition"]
 
         roi = bbox2polygon(api.payload["roi"]) \
             if "roi" in api.payload \
@@ -46,84 +50,95 @@ class DataCube_Build(Resource):
             if "tragetProjection" in api.payload \
             else "EPSG:4326"
 
-        parsedDestination = urlparse(api.payload["dataCubePath"])
+        groupedDatasets: dict[float, List[xr.Dataset]] = {}
 
-        datasets: List[xr.Dataset] = []
+        centerMostGranule = {"group": float, "index": int}
+        xmin, ymin, xmax, ymax = np.inf, np.inf, -np.inf, -np.inf
+        roiCentroid: Point = roi.centroid
+        minDistance = np.inf
 
-        for idx, rasterFile in enumerate(rasterFiles):
-            api.logger.info(f"[File {idx + 1}] Extracting bands of interest")
-            inputObjectStore = createInputObjectStore(
-                    urlparse(rasterFile["rasterPath"]).scheme)
+        offset = 1
 
-            try:
-                if rasterFile["rasterFormat"] == FileFormats.SENTINEL2_2A.value:
-                    rasterArchive = Sentinel2_Level2A(
-                        inputObjectStore, rasterFile["rasterPath"],
-                        api.payload["bands"], targetResolution,
-                        rasterFile["rasterTimestamp"])
-                else:
-                    return f"'{rasterFile['rasterFormat']}' not accepted", 500
-            except Exception as e:
-                api.logger.error(e)
-                return f"Error when extracting the bands for {rasterFile}", 500
+        for rasterGroup in rasterGroups:
+            groupedDatasets[rasterGroup["timestamp"]] = []
 
-            try:
-                api.logger.info(f"[File {idx + 1}] Building ZARR from bands")
+            for idx, rasterFile in enumerate(rasterGroup["rasters"]):
+                api.logger.info(f"[File {idx + offset}] Extracting bands")
+                inputObjectStore = createInputObjectStore(
+                        urlparse(rasterFile["path"]).scheme)
 
-                dataset = rasterArchive.buildZarr(
-                  f"{parsedDestination.netloc}/{parsedDestination.path}_{idx}",
-                  targetProjection, polygon=roi)
-                datasets.append(dataset)
-            except Exception as e:
-                api.logger.error(e)
-                return f"Error when generating the ZARR for {rasterFile}", 500
+                archiveType = rasterFile["source"] + "-" + rasterFile["format"]
+                try:
+                    if archiveType == ArchiveTypes.S2L2A.value:
+                        rasterArchive = Sentinel2_Level2A_safe(
+                            inputObjectStore, rasterFile["path"],
+                            api.payload["bands"], targetResolution,
+                            rasterGroup["timestamp"])
+                    elif archiveType == ArchiveTypes.S2L2A_THEIA.value:
+                        rasterArchive = Sentinel2_Level2A_Theia(
+                            inputObjectStore, rasterFile["path"],
+                            api.payload["bands"], targetResolution,
+                            rasterGroup["timestamp"])
+                    else:
+                        return f"Archive type '{archiveType}' not accepted", \
+                               500
+                except Exception as e:
+                    api.logger.error(e)
+                    return f"Error when extracting bands for {rasterFile}", 500
 
-        api.logger.info("Building datacube from the ZARRs")
-        if len(datasets) != 1:
-            try:
-                # Group the datasets by timestamp to merge them
-                temporalBuckets: dict[float, List] = {}
-                # Find the centermost granule based on ROI and maximum bounds
-                xmin, ymin, xmax, ymax = np.inf, np.inf, -np.inf, -np.inf
-                roiCentroid: Point = roi.centroid
-                centermostGranuleDSindex = 0
-                minDistance = np.inf
-                for i, ds in enumerate(datasets):
-                    dsBounds = getBounds(ds)
+                try:
+                    api.logger.info(f"[File {idx + offset}] Building ZARR")
+
+                    # Build the zarr dataset and add it to its group's list
+                    dataset = rasterArchive.buildZarr(
+                        f'{api.payload["dataCubePath"]}_{idx}',
+                        targetProjection, polygon=roi)
+                    groupedDatasets[rasterGroup["timestamp"]].append(dataset)
+
+                    # Find the centermost granule based on ROI and max bounds
+                    dsBounds = getBounds(dataset)
                     granuleCenter = Point((dsBounds[0] + dsBounds[2])/2,
                                           (dsBounds[1] + dsBounds[3])/2)
                     if roiCentroid.distance(granuleCenter) < minDistance:
                         minDistance = roiCentroid.distance(granuleCenter)
-                        centermostGranuleDSindex = i
+                        centerMostGranule["group"] = rasterGroup["timestamp"]
+                        centerMostGranule["index"] = idx
+
+                    # Update the extent of the datacube
                     xmin = min(xmin, dsBounds[0])
                     ymin = min(ymin, dsBounds[1])
                     xmax = max(xmax, dsBounds[2])
                     ymax = max(ymax, dsBounds[3])
+                except Exception as e:
+                    api.logger.error(e)
+                    return f"Error when building the ZARR for {rasterFile}", \
+                           500
+            offset += len(rasterGroup["rasters"])
 
-                    # Add dataset to a temporal bucket
-                    if ds.get("t").values[0] in temporalBuckets.keys():
-                        temporalBuckets[ds.get("t").values[0]].append(ds)
-                    else:
-                        temporalBuckets[ds.get("t").values[0]] = [ds]
-
+        api.logger.info("Building datacube from the ZARRs")
+        # If there is more than one file requested
+        if not (len(rasterGroups) == 1 and
+                len(rasterGroups[0]["rasters"]) == 1):
+            try:
                 # Generate a grid extending the center granule
-                lonStep = datasets[centermostGranuleDSindex].get("x") \
-                                                            .diff("x").mean()
-                latStep = datasets[centermostGranuleDSindex].get("y") \
-                                                            .diff("y").mean()
+                centerMostGranuleDS = groupedDatasets[
+                    centerMostGranule["group"]][centerMostGranule["index"]]
+                lonStep = centerMostGranuleDS.get("x").diff("x").mean()
+                latStep = centerMostGranuleDS.get("y").diff("y").mean()
+
                 lon, lat = completeGrid(
-                    datasets[centermostGranuleDSindex].get("x"), lonStep,
-                    datasets[centermostGranuleDSindex].get("y"), latStep,
+                    centerMostGranuleDS.get("x"), lonStep,
+                    centerMostGranuleDS.get("y"), latStep,
                     (xmin, ymin, xmax, ymax))
 
                 # For each time bucket, create a mosaick of the datasets
-                timestamps = list(temporalBuckets.keys())
+                timestamps = list(groupedDatasets.keys())
                 timestamps.sort()
 
                 mergedDSPerBucket = []
                 for t in timestamps:
                     mergedDataset = None
-                    for dataset in temporalBuckets[t]:
+                    for dataset in groupedDatasets[t]:
                         # Interpolate the granule with new grid on its extent
                         granuleBounds = getBounds(dataset)
                         granuleLon = lon[(lon[:] >= granuleBounds[0])
@@ -148,7 +163,7 @@ class DataCube_Build(Resource):
                 api.logger.error(e)
                 return "Error when merging the intermediary files", 500
         else:
-            dataCube = datasets[0]
+            dataCube = groupedDatasets[list(groupedDatasets.keys())[0]][0]
         # TODO: merge manually dataset attributes
 
         api.logger.info("Writing datacube to Object Store")

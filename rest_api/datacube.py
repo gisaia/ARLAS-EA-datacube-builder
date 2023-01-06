@@ -60,7 +60,7 @@ class DataCube_Build(Resource):
         minDistance = np.inf
 
         offset = 1
-        zarrRootPath = f'tmp_zarr/{api.payload["dataCubePath"]}'
+        zarrRootPath = f'tmp/{api.payload["dataCubePath"]}'
 
         for groupIdx, rasterGroup in enumerate(rasterGroups):
             groupedDatasets[rasterGroup["timestamp"]] = []

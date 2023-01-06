@@ -5,3 +5,4 @@ tmp/
 env.sh
 gisaia-datacube/
 credentials*
+tmp_zarr/

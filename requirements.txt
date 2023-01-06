@@ -11,3 +11,6 @@ lxml==4.8.0
 zarr==2.8.1
 google-cloud-storage
 fsspec
+scipy==1.8.1
+gcsfs
+dask

@@ -1,12 +1,14 @@
 #!/usr/bin/python3
 from typing import List
 
+import base64
 import os
 import shutil
 import numpy as np
 import xarray as xr
 from flask_restx import Namespace, Resource
 from shapely.geometry import Point
+import smart_open as so
 
 from models.rasterDrivers.archiveTypes import ArchiveTypes
 from models.rasterDrivers.sentinel2_level2A_safe import Sentinel2_Level2A_safe
@@ -16,11 +18,14 @@ from models.request.datacube_build import DATACUBE_BUILD_REQUEST
 from models.request.rasterGroup import RASTERGROUP_MODEL
 from models.request.rasterFile import RASTERFILE_MODEL
 
-from models.response.datacube_build import DATACUBE_BUILD_RESPONSE
+from models.response.datacube_build import DATACUBE_BUILD_RESPONSE, \
+                                           DatacubeBuildResponse
 
 from utils.geometry import bbox2polygon, completeGrid
 from utils.objectStore import createInputObjectStore, \
-                              getMapperOutputObjectStore
+                              getMapperOutputObjectStore, \
+                              createOutputObjectStore
+from utils.preview import createPreviewB64
 from utils.xarray import getBounds, getChunkSize, mergeDatasets
 
 from urllib.parse import urlparse
@@ -176,7 +181,8 @@ class DataCube_Build(Resource):
 
         api.logger.info("Writing datacube to Object Store")
         try:
-            url, mapper = getMapperOutputObjectStore(api.payload["dataCubePath"])
+            datacubeUrl, mapper = getMapperOutputObjectStore(
+                api.payload["dataCubePath"])
             chunkSize = getChunkSize(dataCube.attrs['dtype'])
             dataCube.chunk({"x": chunkSize, "y": chunkSize, "t": 1}) \
                     .to_zarr(mapper, mode="w")
@@ -184,8 +190,25 @@ class DataCube_Build(Resource):
             api.logger.error(e)
             return "Error when writing the ZARR to the object store", 500
 
-        # Clean up the created zarrs
+        api.logger.info("Uploading preview to Object Store")
+        try:
+            preview = createPreviewB64(
+                dataCube, api.payload["bands"][0],
+                f'tmp/{api.payload["dataCubePath"]}.jpg')
+            client = createOutputObjectStore().client
+
+            with so.open(f"{datacubeUrl}.jpg", "wb",
+                         transport_params={"client": client}) as fb:
+                fb.write(base64.b64decode(preview))
+        except Exception as e:
+            api.logger.error(e)
+            return "Error when uploading preview to the object store", 500
+
+        # Clean up the files created
         if os.path.exists(zarrRootPath) and os.path.isdir(zarrRootPath):
             shutil.rmtree(zarrRootPath)
+        os.remove(f'tmp/{api.payload["dataCubePath"]}.jpg')
+        os.remove(f'tmp/{api.payload["dataCubePath"]}.jpg.aux.xml')
 
-        return {"datacubeURL": url}, 200
+        return DatacubeBuildResponse(
+            datacubeUrl, f"{datacubeUrl}.jpg", preview), 200

@@ -1,6 +1,8 @@
 #!/usr/bin/python3
 from typing import List
 
+import os
+import shutil
 import numpy as np
 import xarray as xr
 from flask_restx import Namespace, Resource
@@ -58,8 +60,9 @@ class DataCube_Build(Resource):
         minDistance = np.inf
 
         offset = 1
+        zarrRootPath = f'tmp_zarr/{api.payload["dataCubePath"]}'
 
-        for rasterGroup in rasterGroups:
+        for groupIdx, rasterGroup in enumerate(rasterGroups):
             groupedDatasets[rasterGroup["timestamp"]] = []
 
             for idx, rasterFile in enumerate(rasterGroup["rasters"]):
@@ -91,7 +94,7 @@ class DataCube_Build(Resource):
 
                     # Build the zarr dataset and add it to its group's list
                     dataset = rasterArchive.buildZarr(
-                        f'{api.payload["dataCubePath"]}_{idx}',
+                        f'{zarrRootPath}/{groupIdx}/{idx}',
                         targetProjection, polygon=roi)
                     groupedDatasets[rasterGroup["timestamp"]].append(dataset)
 
@@ -175,5 +178,9 @@ class DataCube_Build(Resource):
         except Exception as e:
             api.logger.error(e)
             return "Error when writing the ZARR to the object store", 500
+
+        # Clean up the created zarrs
+        if os.path.exists(zarrRootPath) and os.path.isdir(zarrRootPath):
+            shutil.rmtree(zarrRootPath)
 
         return "Datacube built", 200

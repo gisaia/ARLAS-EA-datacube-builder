@@ -1,3 +1,4 @@
+import os
 import re
 import zipfile
 from datetime import datetime
@@ -92,8 +93,9 @@ class Sentinel2_Level2A_Theia(AbstractRasterArchive):
                 for band in bands:
                     for fileName in listOfFileNames:
                         if re.match(rf".*/.*_FRE_{band}\.tif", fileName):
+                            if not os.path.exists(zipExtractPath + fileName):
+                                rasterZip.extract(fileName, zipExtractPath)
 
-                            rasterZip.extract(fileName, zipExtractPath)
                             self.bandsToExtract[band] = zipExtractPath + \
                                 fileName
 

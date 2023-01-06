@@ -1,3 +1,4 @@
+import os
 import re
 import zipfile
 from datetime import datetime
@@ -124,7 +125,9 @@ class Sentinel2_Level2A_safe(AbstractRasterArchive):
                                     rf".*{band}_{bandResolution}m\.jp2",
                                     fileName):
 
-                            rasterZip.extract(fileName, zipExtractPath)
+                            if not os.path.exists(zipExtractPath + fileName):
+                                rasterZip.extract(fileName, zipExtractPath)
+
                             self.bandsToExtract[band] = zipExtractPath + \
                                 fileName
 

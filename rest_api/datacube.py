@@ -16,6 +16,8 @@ from models.request.datacube_build import DATACUBE_BUILD_REQUEST
 from models.request.rasterGroup import RASTERGROUP_MODEL
 from models.request.rasterFile import RASTERFILE_MODEL
 
+from models.response.datacube_build import DATACUBE_BUILD_RESPONSE
+
 from utils.geometry import bbox2polygon, completeGrid
 from utils.objectStore import createInputObjectStore, \
                               getMapperOutputObjectStore
@@ -29,6 +31,8 @@ api.models[DATACUBE_BUILD_REQUEST.name] = DATACUBE_BUILD_REQUEST
 api.models[RASTERGROUP_MODEL.name] = RASTERGROUP_MODEL
 api.models[RASTERFILE_MODEL.name] = RASTERFILE_MODEL
 
+api.models[DATACUBE_BUILD_RESPONSE.name] = DATACUBE_BUILD_RESPONSE
+
 ZIP_EXTRACT_PATH = "tmp/"
 
 
@@ -36,6 +40,7 @@ ZIP_EXTRACT_PATH = "tmp/"
 class DataCube_Build(Resource):
 
     @api.expect(DATACUBE_BUILD_REQUEST)
+    @api.marshal_with(DATACUBE_BUILD_RESPONSE)
     def post(self):
         api.logger.info("[POST] /build")
         rasterGroups: List = api.payload["composition"]
@@ -171,7 +176,7 @@ class DataCube_Build(Resource):
 
         api.logger.info("Writing datacube to Object Store")
         try:
-            mapper = getMapperOutputObjectStore(api.payload["dataCubePath"])
+            url, mapper = getMapperOutputObjectStore(api.payload["dataCubePath"])
             chunkSize = getChunkSize(dataCube.attrs['dtype'])
             dataCube.chunk({"x": chunkSize, "y": chunkSize, "t": 1}) \
                     .to_zarr(mapper, mode="w")
@@ -183,4 +188,4 @@ class DataCube_Build(Resource):
         if os.path.exists(zarrRootPath) and os.path.isdir(zarrRootPath):
             shutil.rmtree(zarrRootPath)
 
-        return "Datacube built", 200
+        return {"datacubeURL": url}, 200

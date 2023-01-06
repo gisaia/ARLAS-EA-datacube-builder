@@ -21,6 +21,6 @@ def createInputObjectStore(objStoreType) -> AbstractObjectStore:
 
 # By default uses GCS as an object store
 def getMapperOutputObjectStore(destination) -> FSMap:
-    return get_mapper(
-        f"gs://{OUTPUT_OBJECT_STORE['gs.bucket']}/{destination}", mode="w",
-        token=OUTPUT_OBJECT_STORE["gs.api_key"])
+    url = f"gs://{OUTPUT_OBJECT_STORE['gs.bucket']}/{destination}"
+    return url, get_mapper(url, mode="w",
+                           token=OUTPUT_OBJECT_STORE["gs.api_key"])

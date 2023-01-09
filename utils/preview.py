@@ -4,11 +4,11 @@ import base64
 import rioxarray
 
 
-def _bandTo256(dataset: xr.Dataset, asset: str, xfactor, yfactor):
+def _bandTo256(dataset: xr.Dataset, asset: str, xfactor, yfactor, timeSlice):
     """
     Put a band values between 0 and 255
     """
-    band: xr.DataArray = dataset[asset].isel(t=-1)
+    band: xr.DataArray = dataset[asset].sel(t=timeSlice)
     min = band.min()
     max = band.max()
 
@@ -20,15 +20,18 @@ def _bandTo256(dataset: xr.Dataset, asset: str, xfactor, yfactor):
     return band.transpose().reindex(y=band.y[::-1])
 
 
-def createPreviewB64(dataset: xr.Dataset, asset: str, overviewPath: str):
+def createPreviewB64(dataset: xr.Dataset, asset: str,
+                     overviewPath: str, timeSlice=None):
     """
     Create a 256x256 preview of datacube and convert it to base64
     """
+    if timeSlice is None:
+        timeSlice = dataset.t.values[-1]
     # We want a 256x256 pic
     xfactor = len(dataset.x) // 256
     yfactor = len(dataset.y) // 256
     overview_data = xr.Dataset({
-        "grey": _bandTo256(dataset, asset, xfactor, yfactor)
+        "grey": _bandTo256(dataset, asset, xfactor, yfactor, timeSlice)
     })
 
     # Cut the x and y to have 256x256

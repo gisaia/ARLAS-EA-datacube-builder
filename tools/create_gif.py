@@ -5,6 +5,7 @@ import xarray as xr
 import re
 import os
 import shutil
+from typing import Dict
 
 import sys
 from pathlib import Path
@@ -13,7 +14,7 @@ sys.path.insert(0, ROOT_PATH)
 from utils.preview import createPreviewB64
 
 
-def create_gif(datacube: xr.Dataset, asset: str, gif_name: str):
+def create_gif(datacube: xr.Dataset, rgb: Dict[str, str], gif_name: str):
     # Find where to put the temporary pictures
     matches = re.findall(r"(.*)\.gif", gif_name)
     if len(matches) == 0:
@@ -24,11 +25,11 @@ def create_gif(datacube: xr.Dataset, asset: str, gif_name: str):
 
     # Generate the pictures for the gif
     for t in datacube.t.values:
-        createPreviewB64(datacube, asset, f"tmp/{gifRootPath}/{t}.jpg", t)
+        createPreviewB64(datacube, rgb, f"tmp/{gifRootPath}/{t}.jpg", t)
 
     # Create the gif and clean-up
     os.system(f"cd tmp/{gifRootPath};" +
-              f"convert -delay 100 -loop 0 *.jpg {ROOT_PATH}/{gif_name};")
+              f"convert -delay 100 -loop 0 *.jpg {ROOT_PATH}/{gif_name}")
     shutil.rmtree(f"tmp/{gifRootPath}")
 
 
@@ -41,11 +42,12 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
         description="Script to build gifs from datacubes")
-    parser.add_argument("--datacubePath", dest="datacubePath",
+    parser.add_argument("-d", "--datacubePath", dest="datacubePath",
                         help="Path to the datacube")
-    parser.add_argument("--asset", dest="asset",
-                        help="The asset to generate a gif of")
-    parser.add_argument("--gifPath", dest="gifPath",
+    parser.add_argument("--rgb", dest="rgb", nargs="+",
+                        help="The bands to use for an RGB picture." +
+                             "If one is given, generates a grey one")
+    parser.add_argument("-g", "--gifPath", dest="gifPath",
                         help="Path to the output gif")
 
     args = parser.parse_args()
@@ -54,8 +56,8 @@ if __name__ == "__main__":
     if args.datacubePath is None:
         print("[ERROR] A datacube is needed")
         error = True
-    if args.asset is None:
-        print("[ERROR] An asset is needed")
+    if args.rgb is None:
+        print("[ERROR] Bands are needed")
         error = True
     if error:
         exit
@@ -65,5 +67,15 @@ if __name__ == "__main__":
         gifPath = f"{args.datacubePath}.gif"
 
     datacube = xr.open_zarr(args.datacubePath)
-    create_gif(datacube, args.asset, gifPath)
+
+    # Attribute the RGB bands to the input assets
+    if len(args.rgb) == 1:
+        rgb = {"R": args.rgb[0], "G": args.rgb[0], "B": args.rgb[0]}
+    elif len(args.rgb) == 2:
+        raise ValueError("There must be 1 or 3 assets, not 2")
+    elif len(args.rgb) == 3:
+        rgb = {"R": args.rgb[0], "G": args.rgb[1], "B": args.rgb[2]}
+    else:
+        raise ValueError(f"There must be 1 or 3 assets, not {len(args.rgb)}")
+    create_gif(datacube, rgb, gifPath)
     print(f"[SUCCESS] Created the gif {gifPath}")

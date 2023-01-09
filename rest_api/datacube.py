@@ -220,8 +220,23 @@ class DataCube_Build(Resource):
 
         api.logger.info("Uploading preview to Object Store")
         try:
+            # Depending on the format of the Sentinel2 files,
+            # bands are not named the same. It is not possible
+            # to check globally unless columns are standardized
+            if "B2" in request.bands \
+               and "B3" in request.bands \
+               and "B4" in request.bands:
+                previewBands = {"R": "B4", "G": "B3", "B": "B2"}
+            elif "B02" in request.bands \
+                 and "B03" in request.bands \
+                 and "B04" in request.bands:
+                previewBands = {"R": "B04", "G": "B03", "B": "B02"}
+            else:
+                firstBand = request.bands[0]
+                previewBands = {"R": firstBand, "G": firstBand, "B": firstBand}
+
             preview = createPreviewB64(
-                dataCube, request.bands[0],
+                dataCube, previewBands,
                 f'{zarrRootPath}.png')
             client = createOutputObjectStore().client
 

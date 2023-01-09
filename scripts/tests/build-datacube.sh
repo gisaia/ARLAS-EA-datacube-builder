@@ -15,6 +15,6 @@ curl -X POST -H "Content-Type: application/json" -d '{
     ],
     "dataCubePath": "test_theia",
     "roi": "-1.0,42.688794,-0.5,42.87091",
-    "bands": ["B5"],
+    "bands": ["B5", "B8"],
     "targetResolution": 20
     }' http://localhost:5000/cube/build

@@ -8,7 +8,7 @@ import xarray as xr
 from shapely.geometry import Polygon
 
 from models.raster import Raster
-from utils.xarray import getChunkShape
+from utils.xarray import getChunkSize
 
 
 @dataclass
@@ -58,23 +58,26 @@ class AbstractRasterArchive(abc.ABC):
                 if raster.width > maxWidth:
                     maxWidth = raster.width
                     xmin, _, xmax, _ = raster.bounds
+                    xstep = xr.open_zarr(zarrStore).get("x").diff("x").mean()
                 if raster.height > maxHeight:
                     maxHeight = raster.height
                     _, ymin, _, ymax = raster.bounds
+                    ystep = xr.open_zarr(zarrStore).get("y").diff("y").mean()
 
                 zarrs.append(zarrStore)
                 metadata = raster.metadata
 
         # Retrieve the zarr stores as xarray objects that are on a same grid
         interpDataset = xr.Dataset({
-            "x": np.arange(xmin, xmax, self.targetResolution),
-            "y": np.arange(ymin, ymax, self.targetResolution)})
+            "x": np.arange(xmin, xmax, xstep),
+            "y": np.arange(ymin, ymax, ystep)})
         allZarrs = []
         for zarrStore in zarrs:
             xrZarr = xr.open_zarr(zarrStore)
             if xrZarr.dims["x"] != maxWidth or xrZarr.dims["y"] != maxHeight:
+                chunkSize = getChunkSize(dtype, chunkMbs)
                 xrZarr = xrZarr.interp_like(interpDataset) \
-                            .chunk(getChunkShape(dtype, chunkMbs))
+                               .chunk({"x": chunkSize, "y": chunkSize, "t": 1})
             allZarrs.append(xrZarr)
         del zarrs
 

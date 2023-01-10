@@ -80,6 +80,8 @@ class Sentinel2_Level2A_Theia(AbstractRasterArchive):
                 # Extract timestamp of production of the product
                 for fileName in listOfFileNames:
                     if re.match(r".*MTD_ALL.xml", fileName):
+                        if not os.path.exists(zipExtractPath + fileName):
+                            rasterZip.extract(fileName, zipExtractPath)
                         rasterZip.extract(fileName, zipExtractPath)
                         metadata: etree._ElementTree = etree.parse(
                             zipExtractPath + fileName)

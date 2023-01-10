@@ -75,7 +75,7 @@ def completeGrid(longitudes: xr.DataArray | np.ndarray, longitudeStep: float,
             extendedLon = extendedLon[:-1]
 
     # If missing an element, add the furthest from the bounds
-    if len(extendedLat) != math.ceil((bounds[3] - bounds[1]) / latitudeStep):
+    if len(extendedLat) < math.ceil((bounds[3] - bounds[1]) / latitudeStep):
         if abs(extendedLat[-1] - bounds[3]) < abs(extendedLat[0] - bounds[1]):
             extendedLat = np.concatenate(
                 ([extendedLat[0] - latitudeStep], extendedLat))

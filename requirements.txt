@@ -15,3 +15,4 @@ fsspec
 scipy==1.8.1
 gcsfs
 dask
+mr4mp==2.6.2

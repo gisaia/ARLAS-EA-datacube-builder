@@ -1,5 +1,6 @@
 #!/usr/bin/python3
-from typing import List
+from typing import List, Dict, Tuple
+import traceback
 
 import base64
 import os
@@ -9,6 +10,7 @@ import xarray as xr
 from flask_restx import Namespace, Resource
 from shapely.geometry import Point
 import smart_open as so
+import mr4mp
 
 from models.rasterDrivers.archiveTypes import ArchiveTypes
 from models.rasterDrivers.sentinel2_level2A_safe import Sentinel2_Level2A_safe
@@ -43,6 +45,67 @@ api.models[DATACUBE_BUILD_RESPONSE.name] = DATACUBE_BUILD_RESPONSE
 ZIP_EXTRACT_PATH = "tmp/"
 
 
+def download(download_input: Tuple[DatacubeBuildRequest, int, int]) \
+                -> Dict[float, List[xr.Dataset]]:
+    """
+    Builds a zarr corresponding to the requested bands for
+    the raster file 'fileIdx' in the group 'groupIdx'
+    """
+    request = download_input[0]
+    groupIdx = download_input[1]
+    fileIdx = download_input[2]
+
+    try:
+        # Retrieve from the request the important information
+        rasterFile = request.composition[groupIdx].rasters[fileIdx]
+        timestamp = request.composition[groupIdx].timestamp
+
+        inputObjectStore = createInputObjectStore(
+                        urlparse(rasterFile.path).scheme)
+        archiveType = rasterFile.source + "-" + rasterFile.format
+
+        api.logger.info(f"[group-{groupIdx}:file-{fileIdx}] Extracting bands")
+        # Depending on archive type, extract desired data
+        if archiveType == ArchiveTypes.S2L2A.value:
+            rasterArchive = Sentinel2_Level2A_safe(
+                inputObjectStore, rasterFile.path,
+                request.bands, request.targetResolution,
+                timestamp)
+        elif archiveType == ArchiveTypes.S2L2A_THEIA.value:
+            rasterArchive = Sentinel2_Level2A_Theia(
+                inputObjectStore, rasterFile.path,
+                request.bands, request.targetResolution,
+                timestamp)
+        else:
+            raise Exception(f"Archive type '{archiveType}' not accepted")
+
+        api.logger.info(f"[group-{groupIdx}:file-{fileIdx}] Building ZARR")
+        # Build the zarr dataset and add it to its group's list
+        dataset = rasterArchive.buildZarr(
+            f'tmp/{request.dataCubePath}/{groupIdx}/{fileIdx}',
+            request.targetProjection, polygon=request.roi)
+
+        groupedDatasets: Dict[float, List[xr.Dataset]] = {timestamp: [dataset]}
+        return groupedDatasets
+    except Exception as e:
+        api.logger.error(f"[group-{groupIdx}:file-{fileIdx}]")
+        raise e
+
+
+def merge(result_a: Dict[float, List[xr.Dataset]],
+          result_b: Dict[float, List[xr.Dataset]]) \
+            -> Dict[float, List[xr.Dataset]]:
+    """
+    Merge the results of the download method in a mapreduce process
+    """
+    for timestamp in list(result_b.keys()):
+        if timestamp in list(result_a.keys()):
+            result_a[timestamp].extend(result_b[timestamp])
+        else:
+            result_a[timestamp] = result_b[timestamp]
+    return result_a
+
+
 @api.route('/build')
 class DataCube_Build(Resource):
 
@@ -61,64 +124,35 @@ class DataCube_Build(Resource):
         roiCentroid: Point = request.roi.centroid
         minDistance = np.inf
 
-        offset = 1
         zarrRootPath = f'tmp/{request.dataCubePath}'
 
-        for groupIdx, rasterGroup in enumerate(request.composition):
-            groupedDatasets[rasterGroup.timestamp] = []
+        # Generate the iterable of all files to download
+        mapReduceIter = []
+        for groupIdx in range(len(request.composition)):
+            for idx in range(len(request.composition[groupIdx].rasters)):
+                mapReduceIter.append((request, groupIdx, idx))
 
-            for idx, rasterFile in enumerate(rasterGroup.rasters):
-                api.logger.info(f"[File {idx + offset}] Extracting bands")
-                inputObjectStore = createInputObjectStore(
-                        urlparse(rasterFile.path).scheme)
+        # Download paralelly the groups of bands of each file
+        pool = mr4mp.pool()
+        groupedDatasets = pool.mapreduce(download, merge, mapReduceIter)
+        pool.close()
 
-                archiveType = rasterFile.source + "-" + rasterFile.format
-                try:
-                    if archiveType == ArchiveTypes.S2L2A.value:
-                        rasterArchive = Sentinel2_Level2A_safe(
-                            inputObjectStore, rasterFile.path,
-                            request.bands, request.targetResolution,
-                            rasterGroup.timestamp)
-                    elif archiveType == ArchiveTypes.S2L2A_THEIA.value:
-                        rasterArchive = Sentinel2_Level2A_Theia(
-                            inputObjectStore, rasterFile.path,
-                            request.bands, request.targetResolution,
-                            rasterGroup.timestamp)
-                    else:
-                        return f"Archive type '{archiveType}' not accepted", \
-                               500
-                except Exception as e:
-                    api.logger.error(e)
-                    return f"Error when extracting bands for {rasterFile}", 500
+        for timestamp, datasetList in groupedDatasets.items():
+            for idx, dataset in enumerate(datasetList):
+                # Find the centermost granule based on ROI and max bounds
+                dsBounds = getBounds(dataset)
+                granuleCenter = Point((dsBounds[0] + dsBounds[2])/2,
+                                      (dsBounds[1] + dsBounds[3])/2)
+                if roiCentroid.distance(granuleCenter) < minDistance:
+                    minDistance = roiCentroid.distance(granuleCenter)
+                    centerMostGranule["group"] = timestamp
+                    centerMostGranule["index"] = idx
 
-                try:
-                    api.logger.info(f"[File {idx + offset}] Building ZARR")
-
-                    # Build the zarr dataset and add it to its group's list
-                    dataset = rasterArchive.buildZarr(
-                        f'{zarrRootPath}/{groupIdx}/{idx}',
-                        request.targetProjection, polygon=request.roi)
-                    groupedDatasets[rasterGroup.timestamp].append(dataset)
-
-                    # Find the centermost granule based on ROI and max bounds
-                    dsBounds = getBounds(dataset)
-                    granuleCenter = Point((dsBounds[0] + dsBounds[2])/2,
-                                          (dsBounds[1] + dsBounds[3])/2)
-                    if roiCentroid.distance(granuleCenter) < minDistance:
-                        minDistance = roiCentroid.distance(granuleCenter)
-                        centerMostGranule["group"] = rasterGroup.timestamp
-                        centerMostGranule["index"] = idx
-
-                    # Update the extent of the datacube
-                    xmin = min(xmin, dsBounds[0])
-                    ymin = min(ymin, dsBounds[1])
-                    xmax = max(xmax, dsBounds[2])
-                    ymax = max(ymax, dsBounds[3])
-                except Exception as e:
-                    api.logger.error(e)
-                    return f"Error when building the ZARR for {rasterFile}", \
-                           500
-            offset += len(rasterGroup.rasters)
+                # Update the extent of the datacube
+                xmin = min(xmin, dsBounds[0])
+                ymin = min(ymin, dsBounds[1])
+                xmax = max(xmax, dsBounds[2])
+                ymax = max(ymax, dsBounds[3])
 
         api.logger.info("Building datacube from the ZARRs")
         # If there is more than one file requested
@@ -166,6 +200,7 @@ class DataCube_Build(Resource):
                 dataCube = xr.concat(mergedDSPerBucket, dim="t")
             except Exception as e:
                 api.logger.error(e)
+                traceback.print_exc()
                 return "Error when merging the intermediary files", 500
         else:
             dataCube = groupedDatasets[list(groupedDatasets.keys())[0]][0]
@@ -180,6 +215,7 @@ class DataCube_Build(Resource):
                     .to_zarr(mapper, mode="w")
         except Exception as e:
             api.logger.error(e)
+            traceback.print_exc()
             return "Error when writing the ZARR to the object store", 500
 
         api.logger.info("Uploading preview to Object Store")
@@ -194,6 +230,7 @@ class DataCube_Build(Resource):
                 fb.write(base64.b64decode(preview))
         except Exception as e:
             api.logger.error(e)
+            traceback.print_exc()
             return "Error when uploading preview to the object store", 500
 
         # Clean up the files created

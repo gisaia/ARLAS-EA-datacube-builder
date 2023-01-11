@@ -1,6 +1,6 @@
 from flask_restx import Model, fields
 
-from .rasterFile import RASTERFILE_MODEL
+from .rasterFile import RASTERFILE_MODEL, RasterFile
 from utils.flaskFields import DictItem
 
 RASTERGROUP_MODEL = Model(
@@ -24,3 +24,20 @@ RASTERGROUP_MODEL = Model(
         )
     }
 )
+
+
+class RasterGroup:
+
+    def __init__(self, rasters, timestamp: int, metadata=None):
+        self.rasters = [RasterFile(**raster) for raster in rasters]
+        self.timestamp = timestamp
+        self.metadata = metadata
+
+    def __repr__(self):
+        rasterGroup = {}
+        rasterGroup["rasters"] = self.rasters
+        rasterGroup["timestamp"] = self.timestamp
+        if self.metadata:
+            rasterGroup["metadata"] = self.metadata
+
+        return str(rasterGroup)

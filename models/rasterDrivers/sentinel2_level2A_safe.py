@@ -103,6 +103,8 @@ class Sentinel2_Level2A_safe(AbstractRasterArchive):
                 # Extract timestamp of production of the product
                 for fileName in listOfFileNames:
                     if re.match(r".*MTD_MSI.*\.xml", fileName):
+                        if not os.path.exists(zipExtractPath + fileName):
+                            rasterZip.extract(fileName, zipExtractPath)
                         rasterZip.extract(fileName, zipExtractPath)
                         metadata: etree._ElementTree = etree.parse(
                             zipExtractPath + fileName)

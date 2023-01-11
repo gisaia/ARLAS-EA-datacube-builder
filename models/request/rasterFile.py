@@ -7,7 +7,7 @@ RASTERFILE_MODEL = Model(
             required=True,
             readonly=True,
             description="The format of the raster file.",
-            enum=["2A-Theia", "2A"]
+            enum=["2A-Theia", "2A-Safe"]
         ),
         "source": fields.String(
             required=True,
@@ -22,3 +22,19 @@ RASTERFILE_MODEL = Model(
         )
     }
 )
+
+
+class RasterFile:
+
+    def __init__(self, format, source, path):
+        self.format = format
+        self.source = source
+        self.path = path
+
+    def __repr__(self):
+        rasterFile = {}
+        rasterFile["format"] = self.format
+        rasterFile["source"] = self.source
+        rasterFile["path"] = self.path
+
+        return str(rasterFile)

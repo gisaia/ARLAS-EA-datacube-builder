@@ -1,5 +1,7 @@
 import xarray as xr
 import base64
+# Apparently necessary for the .rio to work
+import rioxarray
 
 
 def _bandTo256(dataset: xr.Dataset, asset: str, xfactor, yfactor):

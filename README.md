@@ -9,11 +9,36 @@ Supported sources are:
     - SAFE Format
     - THEIA Format
 
+When running the service, a swagger of the API is available at the root of the service on the dedicated port.
+
 ## Prerequisites
 
 Docker or python3
 
 ## Running ARLAS-datacube-builder with python
+
+To start the service with python, execute the `app.py` file with the following optional options:
+- `--debug`: launch the debug mode
+- `--logger`: set the logging at INFO level
+- `--host HOST_IP`: set the host IP '`HOST_IP`' of the service
+
+In order to be able to access Object Stores, an `env.sh` file must be created to set the global variables used.
+
+```shell
+#!/bin/sh
+
+export GS_INPUT_BUCKET=
+export GS_INPUT_PRIVATE_KEY_ID=
+export GS_INPUT_PRIVATE_KEY=
+export GS_INPUT_CLIENT_EMAIL=
+
+export GS_OUTPUT_BUCKET=
+export GS_OUTPUT_PRIVATE_KEY_ID=
+export GS_OUTPUT_PRIVATE_KEY=
+export GS_OUTPUT_CLIENT_EMAIL=
+```
+
+The script `scripts/start-app.sh` is available as an example of how to launch the service.
 
 ## Running ARLAS-datacube-builder with docker
 

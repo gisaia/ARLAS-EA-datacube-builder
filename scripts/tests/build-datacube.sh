@@ -49,7 +49,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
         }
     ],
     "dataCubePath": "OssauIratyParallel",
-    "roi": "-0.661998,42.761697,-0.229943,43.106591",
+    "roi": "Polygon((-0.661998 42.761697, -0.229943 42.761697, -0.229943 43.106591, -0.4 43.2, -0.661998 43.106591, -0.661998 42.761697))",
     "bands": ["B5"],
     "targetResolution": 10,
     "targetProjection": "EPSG:4326"

@@ -1,7 +1,8 @@
 import math
-import string
+import re
 
 from shapely.geometry import Point, Polygon
+from shapely.wkt import loads
 from rasterio.warp import transform_geom
 import numpy as np
 import xarray as xr
@@ -9,18 +10,32 @@ import xarray as xr
 EARTH_RADIUS = 6371000  # m
 
 
-def bbox2polygon(bbox: string):
+def roi2geometry(roi: str):
     """
-    Convert a bbox (left, bot, right, top) to a shapely Polygon
+    Convert a ROI into a shapely geometry
     """
-    corners = bbox.split(",")
+    # If contains'(' is a WKT
+    if re.match(r".*\(.*", roi):
+        try:
+            polygon = loads(roi)
+        except Exception:
+            raise ValueError("The ROI is not formatted correctly")
+        if polygon.geom_type != "Polygon":
+            raise TypeError("Only POLYGON geometry is supported for the ROI")
+        return polygon
+    # Else is a BBOX
+    try:
+        corners = roi.split(",")
 
-    leftbot = Point(float(corners[0]), float(corners[1]))
-    lefttop = Point(float(corners[0]), float(corners[3]))
-    rightbot = Point(float(corners[2]), float(corners[1]))
-    righttop = Point(float(corners[2]), float(corners[3]))
+        leftbot = Point(float(corners[0]), float(corners[1]))
+        lefttop = Point(float(corners[0]), float(corners[3]))
+        rightbot = Point(float(corners[2]), float(corners[1]))
+        righttop = Point(float(corners[2]), float(corners[3]))
 
-    return Polygon([leftbot, rightbot, righttop, lefttop, leftbot])
+        return Polygon([leftbot, rightbot, righttop, lefttop, leftbot])
+    except Exception:
+        raise TypeError("Only POLYGON geometry is supported for the ROI," +
+                        "in WKT or BBOX format")
 
 
 def projectPolygon(polygon: Polygon, src_crs: str, dst_crs: str) -> Polygon:

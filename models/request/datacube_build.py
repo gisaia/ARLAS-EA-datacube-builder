@@ -2,7 +2,7 @@ from flask_restx import Model, fields
 
 from .rasterGroup import RASTERGROUP_MODEL, RasterGroup
 
-from utils.geometry import bbox2polygon
+from utils.geometry import roi2geometry
 
 DATACUBE_BUILD_REQUEST = Model(
     "DatacubeBuildRequest",
@@ -18,14 +18,15 @@ DATACUBE_BUILD_REQUEST = Model(
         "roi": fields.String(
             required=True,
             readonly=True,
-            description="The Region Of Interest (bbox) to extract"),
+            description="The Region Of Interest (bbox or WKT Polygon) " +
+                        "to extract"),
         "bands": fields.List(
             fields.String,
             readonly=True,
             description="The list of bands to extract"),
         "targetResolution": fields.Integer(
             readonly=True,
-            description="The requested end resolution in meters"
+            description="The requested spatial resolution in meters"
         ),
         "targetProjection": fields.String(
             readonly=True,
@@ -43,10 +44,8 @@ class DatacubeBuildRequest:
             RasterGroup(**rasterGroup) for rasterGroup in composition]
         self.dataCubePath = dataCubePath
         self.bands = bands
+        self.roi = roi2geometry(roi)
 
-        self.roi = bbox2polygon(roi) \
-            if roi is not None \
-            else None
         self.targetResolution = targetResolution \
             if targetResolution is not None \
             else 10

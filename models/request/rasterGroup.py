@@ -28,7 +28,7 @@ RASTERGROUP_MODEL = Model(
 
 class RasterGroup:
 
-    def __init__(self, rasters, timestamp, metadata=None):
+    def __init__(self, rasters, timestamp: int, metadata=None):
         self.rasters = [RasterFile(**raster) for raster in rasters]
         self.timestamp = timestamp
         self.metadata = metadata

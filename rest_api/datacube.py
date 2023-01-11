@@ -85,16 +85,16 @@ def download(download_input: Tuple[DatacubeBuildRequest, int, int]) \
             f'tmp/{request.dataCubePath}/{groupIdx}/{fileIdx}',
             request.targetProjection, polygon=request.roi)
 
-        groupedDatasets: Dict[float, List[xr.Dataset]] = {timestamp: [dataset]}
+        groupedDatasets: Dict[int, List[xr.Dataset]] = {timestamp: [dataset]}
         return groupedDatasets
     except Exception as e:
         api.logger.error(f"[group-{groupIdx}:file-{fileIdx}]")
         raise e
 
 
-def merge(result_a: Dict[float, List[xr.Dataset]],
-          result_b: Dict[float, List[xr.Dataset]]) \
-            -> Dict[float, List[xr.Dataset]]:
+def merge(result_a: Dict[int, List[xr.Dataset]],
+          result_b: Dict[int, List[xr.Dataset]]) \
+            -> Dict[int, List[xr.Dataset]]:
     """
     Merge the results of the download method in a mapreduce process
     """
@@ -116,9 +116,9 @@ class DataCube_Build(Resource):
 
         request = DatacubeBuildRequest(**api.payload)
 
-        groupedDatasets: dict[float, List[xr.Dataset]] = {}
+        groupedDatasets: dict[int, List[xr.Dataset]] = {}
 
-        centerMostGranule = {"group": float, "index": int}
+        centerMostGranule = {"group": int, "index": int}
         xmin, ymin, xmax, ymax = np.inf, np.inf, -np.inf, -np.inf
         # TODO: what if there is no ROI here ?
         roiCentroid: Point = request.roi.centroid

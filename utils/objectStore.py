@@ -5,10 +5,11 @@ from models.objectStoreDrivers.abstractObjectStore import AbstractObjectStore
 from pathlib import Path
 from envyaml import EnvYAML
 from fsspec import get_mapper, FSMap
+from os.path import join
 
 ROOT_PATH = str(Path(__file__).parent.parent)
-INPUT_OBJECT_STORE = EnvYAML(ROOT_PATH + "/configs/inputObjectStore.yml")
-OUTPUT_OBJECT_STORE = EnvYAML(ROOT_PATH + "/configs/outputObjectStore.yml")
+INPUT_OBJECT_STORE = EnvYAML(join(ROOT_PATH, "configs/inputObjectStore.yml"))
+OUTPUT_OBJECT_STORE = EnvYAML(join(ROOT_PATH, "configs/outputObjectStore.yml"))
 
 
 def createInputObjectStore(objStoreType) -> AbstractObjectStore:

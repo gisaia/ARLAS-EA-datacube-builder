@@ -4,6 +4,7 @@ import argparse
 import xarray as xr
 import re
 import os
+import os.path as path
 import shutil
 from typing import Dict
 
@@ -13,6 +14,8 @@ ROOT_PATH = str(Path(__file__).parent.parent)
 sys.path.insert(0, ROOT_PATH)
 from utils.preview import createPreviewB64
 
+TMP_DIR = "tmp/"
+
 
 def create_gif(datacube: xr.Dataset, rgb: Dict[str, str], gif_name: str):
     # Find where to put the temporary pictures
@@ -21,16 +24,17 @@ def create_gif(datacube: xr.Dataset, rgb: Dict[str, str], gif_name: str):
         gifRootPath = gif_name
     else:
         gifRootPath = matches[0]
-    os.makedirs(f"tmp/{gifRootPath}", exist_ok=True)
+    os.makedirs(path.join(TMP_DIR, gifRootPath), exist_ok=True)
 
     # Generate the pictures for the gif
     for t in datacube.t.values:
-        createPreviewB64(datacube, rgb, f"tmp/{gifRootPath}/{t}.jpg", t)
+        createPreviewB64(datacube, rgb,
+                         path.join(TMP_DIR, gifRootPath, f"{t}.jpg"), t)
 
     # Create the gif and clean-up
-    os.system(f"cd tmp/{gifRootPath};" +
-              f"convert -delay 100 -loop 0 *.jpg {ROOT_PATH}/{gif_name}")
-    shutil.rmtree(f"tmp/{gifRootPath}")
+    os.system(f"cd {path.join(TMP_DIR, gifRootPath)};" +
+              f"convert -delay 100 -loop 0 *.jpg {path.join(ROOT_PATH, gif_name)}")
+    shutil.rmtree(f"{path.join(TMP_DIR, gifRootPath)}")
 
 
 if __name__ == "__main__":

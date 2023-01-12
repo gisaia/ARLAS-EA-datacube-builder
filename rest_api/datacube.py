@@ -21,6 +21,7 @@ from models.rasterDrivers.sentinel2_level2A_theia \
 from models.request.datacube_build \
     import DATACUBE_BUILD_REQUEST, DatacubeBuildRequest
 from models.request.rasterGroup import RASTERGROUP_MODEL
+from models.request.asset import ASSET_MODEL
 from models.request.rasterFile import RASTERFILE_MODEL
 
 from models.response.datacube_build import DATACUBE_BUILD_RESPONSE, \
@@ -39,6 +40,7 @@ api = Namespace("cube",
                 description="Build a data cube from raster files")
 api.models[DATACUBE_BUILD_REQUEST.name] = DATACUBE_BUILD_REQUEST
 api.models[RASTERGROUP_MODEL.name] = RASTERGROUP_MODEL
+api.models[ASSET_MODEL.name] = ASSET_MODEL
 api.models[RASTERFILE_MODEL.name] = RASTERFILE_MODEL
 
 api.models[DATACUBE_BUILD_RESPONSE.name] = DATACUBE_BUILD_RESPONSE
@@ -161,7 +163,7 @@ class DataCube_Build(Resource):
                 len(request.composition[0].rasters) == 1):
             try:
                 # Generate a grid extending the center granule
-                centerMostGranuleDS = groupedDatasets[
+                centerMostGranuleDS: xr.Dataset = groupedDatasets[
                     centerMostGranule["group"]][centerMostGranule["index"]]
                 lonStep = centerMostGranuleDS.get("x").diff("x").mean()
                 latStep = centerMostGranuleDS.get("y").diff("y").mean()
@@ -198,21 +200,30 @@ class DataCube_Build(Resource):
                             mergedDataset = ds
                     mergedDSPerBucket.append(mergedDataset.copy(deep=True))
 
-                dataCube = xr.concat(mergedDSPerBucket, dim="t")
+                datacube: xr.Dataset = xr.concat(mergedDSPerBucket, dim="t")
             except Exception as e:
                 api.logger.error(e)
                 traceback.print_exc()
                 return "Error when merging the intermediary files", 500
         else:
-            dataCube = groupedDatasets[list(groupedDatasets.keys())[0]][0]
+            datacube = groupedDatasets[list(groupedDatasets.keys())[0]][0]
         # TODO: merge manually dataset attributes
+
+        # Get the assets requested from the bands
+        for asset in request.assets:
+            if asset.value is not None:
+                datacube[asset.name] = eval(asset.value)
+
+        # Keep just the assets requested
+        requestedAssets = [asset.name for asset in request.assets]
 
         api.logger.info("Writing datacube to Object Store")
         try:
             datacubeUrl, mapper = getMapperOutputObjectStore(
                 request.dataCubePath)
-            chunkSize = getChunkSize(dataCube.attrs['dtype'])
-            dataCube.chunk({"x": chunkSize, "y": chunkSize, "t": 1}) \
+            chunkSize = getChunkSize(datacube.attrs['dtype'])
+            datacube.get(requestedAssets) \
+                    .chunk({"x": chunkSize, "y": chunkSize, "t": 1}) \
                     .to_zarr(mapper, mode="w")
         except Exception as e:
             api.logger.error(e)
@@ -223,7 +234,9 @@ class DataCube_Build(Resource):
         try:
             # Depending on the format of the Sentinel2 files,
             # bands are not named the same. It is not possible
-            # to check globally unless columns are standardized
+            # to check globally unless columns are standardized.
+            # If RGB bands were used to construct composite bands,
+            # they are still used for the preivew.
             if "B2" in request.bands \
                and "B3" in request.bands \
                and "B4" in request.bands:
@@ -237,7 +250,7 @@ class DataCube_Build(Resource):
                 previewBands = {"R": firstBand, "G": firstBand, "B": firstBand}
 
             preview = createPreviewB64(
-                dataCube, previewBands,
+                datacube, previewBands,
                 f'{zarrRootPath}.png')
             client = createOutputObjectStore().client
 

@@ -2,34 +2,44 @@ import xarray as xr
 import base64
 # Apparently necessary for the .rio to work
 import rioxarray
+from typing import Dict
 
 
-def _bandTo256(dataset: xr.Dataset, asset: str, xfactor, yfactor):
+def _bandTo256(dataset: xr.Dataset, asset: str, xfactor, yfactor, timeSlice):
     """
     Put a band values between 0 and 255
     """
-    band: xr.DataArray = dataset[asset].isel(t=-1)
-    min = band.min()
-    max = band.max()
+    band: xr.DataArray = dataset[asset].sel(t=timeSlice)
 
     """ Change the resolution """
     band = band.coarsen({"x": xfactor, "y": yfactor}, boundary="pad").mean()
+
+    """ Clip the 2% of highest and lowest values """
+    min, max = band.chunk({"x": -1, "y": -1}) \
+                   .quantile([0.02, 0.98], dim=["x", "y"]).values
+    band = xr.where(band > max, max, band)
+    band = xr.where(band < min, min, band)
 
     """ Normalize values within [0-255] """
     band = ((band - min) * 255.0 / (max - min)).astype('uint8')
     return band.transpose().reindex(y=band.y[::-1])
 
 
-def createPreviewB64(dataset: xr.Dataset, asset: str, overviewPath: str):
+def createPreviewB64(dataset: xr.Dataset, assets: Dict[str, str],
+                     overviewPath: str, timeSlice=None):
     """
     Create a 256x256 preview of datacube and convert it to base64
     """
+    if timeSlice is None:
+        timeSlice = dataset.t.values[-1]
     # We want a 256x256 pic
     xfactor = len(dataset.x) // 256
     yfactor = len(dataset.y) // 256
-    overview_data = xr.Dataset({
-        "grey": _bandTo256(dataset, asset, xfactor, yfactor)
-    })
+
+    overview_data = xr.Dataset()
+    for color, asset in assets.items():
+        overview_data[color] = _bandTo256(
+            dataset, asset, xfactor, yfactor, timeSlice)
 
     # Cut the x and y to have 256x256
     xlen = len(overview_data.x)
@@ -38,12 +48,9 @@ def createPreviewB64(dataset: xr.Dataset, asset: str, overviewPath: str):
         x=slice(int((xlen-256)/2), int((xlen+256)/2)),
         y=slice(int((ylen-256)/2), int((ylen+256)/2)))
 
-    overview_data.rio.to_raster(
-        "{}".format(overviewPath),
-        driver="PNG"
-    )
+    overview_data.rio.to_raster(f"{overviewPath}", driver="PNG")
 
-    # encode en base64
+    # encode in base64
     binaryFileContent = open(overviewPath, 'rb').read()
     base64Image = base64.b64encode(binaryFileContent).decode('utf-8')
 

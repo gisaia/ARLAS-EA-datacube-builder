@@ -4,6 +4,7 @@ import traceback
 
 import base64
 import os
+import os.path as path
 import shutil
 import numpy as np
 import xarray as xr
@@ -42,7 +43,7 @@ api.models[RASTERFILE_MODEL.name] = RASTERFILE_MODEL
 
 api.models[DATACUBE_BUILD_RESPONSE.name] = DATACUBE_BUILD_RESPONSE
 
-ZIP_EXTRACT_PATH = "tmp/"
+TMP_DIR = "tmp/"
 
 
 def download(download_input: Tuple[DatacubeBuildRequest, int, int]) \
@@ -70,19 +71,19 @@ def download(download_input: Tuple[DatacubeBuildRequest, int, int]) \
             rasterArchive = Sentinel2_Level2A_safe(
                 inputObjectStore, rasterFile.path,
                 request.bands, request.targetResolution,
-                timestamp)
+                timestamp, TMP_DIR)
         elif archiveType == ArchiveTypes.S2L2A_THEIA.value:
             rasterArchive = Sentinel2_Level2A_Theia(
                 inputObjectStore, rasterFile.path,
                 request.bands, request.targetResolution,
-                timestamp)
+                timestamp, TMP_DIR)
         else:
             raise Exception(f"Archive type '{archiveType}' not accepted")
 
         api.logger.info(f"[group-{groupIdx}:file-{fileIdx}] Building ZARR")
         # Build the zarr dataset and add it to its group's list
         dataset = rasterArchive.buildZarr(
-            f'tmp/{request.dataCubePath}/{groupIdx}/{fileIdx}',
+            path.join(TMP_DIR, request.dataCubePath, f'{groupIdx}/{fileIdx}'),
             request.targetProjection, polygon=request.roi)
 
         groupedDatasets: Dict[int, List[xr.Dataset]] = {timestamp: [dataset]}
@@ -124,7 +125,7 @@ class DataCube_Build(Resource):
         roiCentroid: Point = request.roi.centroid
         minDistance = np.inf
 
-        zarrRootPath = f'tmp/{request.dataCubePath}'
+        zarrRootPath = path.join(TMP_DIR, request.dataCubePath)
 
         # Generate the iterable of all files to download
         mapReduceIter = []
@@ -220,8 +221,23 @@ class DataCube_Build(Resource):
 
         api.logger.info("Uploading preview to Object Store")
         try:
+            # Depending on the format of the Sentinel2 files,
+            # bands are not named the same. It is not possible
+            # to check globally unless columns are standardized
+            if "B2" in request.bands \
+               and "B3" in request.bands \
+               and "B4" in request.bands:
+                previewBands = {"R": "B4", "G": "B3", "B": "B2"}
+            elif "B02" in request.bands \
+                 and "B03" in request.bands \
+                 and "B04" in request.bands:
+                previewBands = {"R": "B04", "G": "B03", "B": "B02"}
+            else:
+                firstBand = request.bands[0]
+                previewBands = {"R": firstBand, "G": firstBand, "B": firstBand}
+
             preview = createPreviewB64(
-                dataCube, request.bands[0],
+                dataCube, previewBands,
                 f'{zarrRootPath}.png')
             client = createOutputObjectStore().client
 

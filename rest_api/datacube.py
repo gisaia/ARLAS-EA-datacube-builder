@@ -12,6 +12,7 @@ from flask_restx import Namespace, Resource
 from shapely.geometry import Point
 import smart_open as so
 import mr4mp
+from http import HTTPStatus
 
 from models.rasterDrivers.archiveTypes import ArchiveTypes
 from models.rasterDrivers.sentinel2_level2A_safe import Sentinel2_Level2A_safe
@@ -26,6 +27,8 @@ from models.request.rasterFile import RASTERFILE_MODEL
 
 from models.response.datacube_build import DATACUBE_BUILD_RESPONSE, \
                                            DatacubeBuildResponse
+from models.errors import BadRequest, DownloadError, \
+                          MosaickingError, UploadError
 
 from utils.enums import RGB
 from utils.geometry import completeGrid
@@ -81,7 +84,7 @@ def download(download_input: Tuple[DatacubeBuildRequest, int, int]) \
                 request.bands, request.targetResolution,
                 timestamp, TMP_DIR)
         else:
-            raise Exception(f"Archive type '{archiveType}' not accepted")
+            raise DownloadError(f"Archive type '{archiveType}' not accepted")
 
         api.logger.info(f"[group-{groupIdx}:file-{fileIdx}] Building ZARR")
         # Build the zarr dataset and add it to its group's list
@@ -93,7 +96,7 @@ def download(download_input: Tuple[DatacubeBuildRequest, int, int]) \
         return groupedDatasets
     except Exception as e:
         api.logger.error(f"[group-{groupIdx}:file-{fileIdx}]")
-        raise e
+        raise DownloadError(e.args[0])
 
 
 def merge(result_a: Dict[int, List[xr.Dataset]],
@@ -118,7 +121,10 @@ class DataCube_Build(Resource):
     def post(self):
         api.logger.info("[POST] /build")
 
-        request = DatacubeBuildRequest(**api.payload)
+        try:
+            request = DatacubeBuildRequest(**api.payload)
+        except Exception as e:
+            raise BadRequest(e.args[0])
 
         groupedDatasets: dict[int, List[xr.Dataset]] = {}
 
@@ -136,9 +142,12 @@ class DataCube_Build(Resource):
                 mapReduceIter.append((request, groupIdx, idx))
 
         # Download paralelly the groups of bands of each file
-        pool = mr4mp.pool()
-        groupedDatasets = pool.mapreduce(download, merge, mapReduceIter)
-        pool.close()
+        try:
+            pool = mr4mp.pool()
+            groupedDatasets = pool.mapreduce(download, merge, mapReduceIter)
+            pool.close()
+        except DownloadError as e:
+            raise e
 
         for timestamp, datasetList in groupedDatasets.items():
             for idx, dataset in enumerate(datasetList):
@@ -204,7 +213,7 @@ class DataCube_Build(Resource):
             except Exception as e:
                 api.logger.error(e)
                 traceback.print_exc()
-                return "Error when merging the intermediary files", 500
+                raise MosaickingError(e.args[0])
         else:
             datacube = groupedDatasets[list(groupedDatasets.keys())[0]][0]
         # TODO: merge manually dataset attributes
@@ -228,7 +237,7 @@ class DataCube_Build(Resource):
         except Exception as e:
             api.logger.error(e)
             traceback.print_exc()
-            return "Error when writing the ZARR to the object store", 500
+            raise UploadError(f"Datacube: {e.args[0]}")
 
         api.logger.info("Uploading preview to Object Store")
         try:
@@ -265,7 +274,7 @@ class DataCube_Build(Resource):
         except Exception as e:
             api.logger.error(e)
             traceback.print_exc()
-            return "Error when uploading preview to the object store", 500
+            raise UploadError(f"Preview: {e.args[0]}")
 
         # Clean up the files created
         if os.path.exists(zarrRootPath) and os.path.isdir(zarrRootPath):
@@ -274,4 +283,4 @@ class DataCube_Build(Resource):
         os.remove(f'{zarrRootPath}.png.aux.xml')
 
         return DatacubeBuildResponse(
-            datacubeUrl, f"{datacubeUrl}.png", preview), 200
+            datacubeUrl, f"{datacubeUrl}.png", preview), HTTPStatus.OK

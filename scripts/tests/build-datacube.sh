@@ -18,14 +18,17 @@ curl -X POST -H "Content-Type: application/json" -d '{
     "assets": [
         {
             "name": "RMinusG",
-            "value": "datacube.B2 - datacube.B3"
+            "value": "datacube.B2 - datacube.B3",
+            "rgb": "RED"
         },
         {
-            "name": "B4"
+            "name": "B4",
+            "rgb": "GREEN"
         },
         {
             "name": "NDVI",
-            "value": "(datacube.B8 - datacube[\u0027B5\u0027]) / (datacube.B8 + datacube.B5)"
+            "value": "(datacube.B8 - datacube[\u0027B5\u0027]) / (datacube.B8 + datacube.B5)",
+            "rgb": "BLUE"
         }
     ],
     "targetResolution": 20

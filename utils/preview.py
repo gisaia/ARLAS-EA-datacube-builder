@@ -3,6 +3,7 @@ import base64
 # Apparently necessary for the .rio to work
 import rioxarray
 from typing import Dict
+from utils.enums import RGB
 
 
 def _bandTo256(dataset: xr.Dataset, asset: str, xfactor, yfactor, timeSlice):
@@ -25,7 +26,7 @@ def _bandTo256(dataset: xr.Dataset, asset: str, xfactor, yfactor, timeSlice):
     return band.transpose().reindex(y=band.y[::-1])
 
 
-def createPreviewB64(dataset: xr.Dataset, assets: Dict[str, str],
+def createPreviewB64(dataset: xr.Dataset, assets: Dict[RGB, str],
                      overviewPath: str, timeSlice=None):
     """
     Create a 256x256 preview of datacube and convert it to base64
@@ -38,7 +39,7 @@ def createPreviewB64(dataset: xr.Dataset, assets: Dict[str, str],
 
     overview_data = xr.Dataset()
     for color, asset in assets.items():
-        overview_data[color] = _bandTo256(
+        overview_data[color.value] = _bandTo256(
             dataset, asset, xfactor, yfactor, timeSlice)
 
     # Cut the x and y to have 256x256

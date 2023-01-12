@@ -27,6 +27,7 @@ from models.request.rasterFile import RASTERFILE_MODEL
 from models.response.datacube_build import DATACUBE_BUILD_RESPONSE, \
                                            DatacubeBuildResponse
 
+from utils.enums import RGB
 from utils.geometry import completeGrid
 from utils.objectStore import createInputObjectStore, \
                               getMapperOutputObjectStore, \
@@ -123,7 +124,6 @@ class DataCube_Build(Resource):
 
         centerMostGranule = {"group": int, "index": int}
         xmin, ymin, xmax, ymax = np.inf, np.inf, -np.inf, -np.inf
-        # TODO: what if there is no ROI here ?
         roiCentroid: Point = request.roi.centroid
         minDistance = np.inf
 
@@ -232,26 +232,31 @@ class DataCube_Build(Resource):
 
         api.logger.info("Uploading preview to Object Store")
         try:
+            # If all colors have been assigned, use them
+            if request.rgb != {}:
+                previewBands = request.rgb
             # Depending on the format of the Sentinel2 files,
             # bands are not named the same. It is not possible
             # to check globally unless columns are standardized.
             # If RGB bands were used to construct composite bands,
-            # they are still used for the preivew.
-            if "B2" in request.bands \
-               and "B3" in request.bands \
-               and "B4" in request.bands:
-                previewBands = {"R": "B4", "G": "B3", "B": "B2"}
-            elif "B02" in request.bands \
-                 and "B03" in request.bands \
-                 and "B04" in request.bands:
-                previewBands = {"R": "B04", "G": "B03", "B": "B02"}
+            # they are still used for the preview.
             else:
-                firstBand = request.bands[0]
-                previewBands = {"R": firstBand, "G": firstBand, "B": firstBand}
+                if "B2" in request.bands and "B3" in request.bands \
+                        and "B4" in request.bands:
+                    previewBands = {
+                        RGB.RED: "B4", RGB.GREEN: "B3", RGB.BLUE: "B2"}
+                elif "B02" in request.bands and "B03" in request.bands \
+                        and "B04" in request.bands:
+                    previewBands = {
+                        RGB.RED: "B04", RGB.GREEN: "B03", RGB.BLUE: "B02"}
+                else:
+                    firstBand: str = request.bands[0]
+                    previewBands = {RGB.RED: firstBand,
+                                    RGB.GREEN: firstBand,
+                                    RGB.BLUE: firstBand}
 
-            preview = createPreviewB64(
-                datacube, previewBands,
-                f'{zarrRootPath}.png')
+            preview = createPreviewB64(datacube, previewBands,
+                                       f'{zarrRootPath}.png')
             client = createOutputObjectStore().client
 
             with so.open(f"{datacubeUrl}.png", "wb",

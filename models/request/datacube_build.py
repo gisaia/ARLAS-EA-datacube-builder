@@ -1,10 +1,12 @@
 from flask_restx import Model, fields
 import re
 import numpy as np
+from typing import Dict
 
 from .rasterGroup import RASTERGROUP_MODEL, RasterGroup
 from .asset import ASSET_MODEL, Asset
 
+from utils.enums import RGB
 from utils.geometry import roi2geometry
 
 DATACUBE_BUILD_REQUEST = Model(
@@ -76,6 +78,20 @@ class DatacubeBuildRequest:
                 bands.extend(match)
         self.bands = np.unique(bands)
 
+        # Check that RGB has been fully filled or not filled
+        self.rgb: Dict[RGB, str] = {}
+        for asset in self.assets:
+            if asset.rgb is not None:
+                if asset.rgb in self.rgb:
+                    raise ValueError(
+                        f"Too many assets given for color {asset.rgb.value}")
+                self.rgb[asset.rgb] = asset.name
+
+        if self.rgb != {} and len(self.rgb.keys()) != 3:
+            raise ValueError("The request should contain no assets with " +
+                             "a non null 'rgb' value or 'RED', 'GREEN' " +
+                             "and 'BLUE' should be assigned.")
+
     def __repr__(self):
         request = {}
         request["composition"] = self.composition
@@ -83,6 +99,7 @@ class DatacubeBuildRequest:
         request["roi"] = self.roi
         request["assets"] = self.assets
         request["bands"] = self.bands
+        request["rgb"] = self.rgb
         request["targetResolution"] = self.targetResolution
         request["targetProjection"] = self.targetProjection
 

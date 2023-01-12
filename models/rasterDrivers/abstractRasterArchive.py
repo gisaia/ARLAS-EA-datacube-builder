@@ -2,7 +2,6 @@ import abc
 from dataclasses import dataclass
 from typing import Dict
 
-import numpy as np
 import rasterio
 import xarray as xr
 from shapely.geometry import Polygon
@@ -57,26 +56,22 @@ class AbstractRasterArchive(abc.ABC):
                 # Retrieve the most precise axis for future interpolation
                 if raster.width > maxWidth:
                     maxWidth = raster.width
-                    xmin, _, xmax, _ = raster.bounds
-                    xstep = xr.open_zarr(zarrStore).get("x").diff("x").mean()
+                    xGrid = xr.open_zarr(zarrStore).get("x")
                 if raster.height > maxHeight:
                     maxHeight = raster.height
-                    _, ymin, _, ymax = raster.bounds
-                    ystep = xr.open_zarr(zarrStore).get("y").diff("y").mean()
+                    yGrid = xr.open_zarr(zarrStore).get("y")
 
                 zarrs.append(zarrStore)
                 metadata = raster.metadata
 
         # Retrieve the zarr stores as xarray objects that are on a same grid
-        interpDataset = xr.Dataset({
-            "x": np.arange(xmin, xmax, xstep),
-            "y": np.arange(ymin, ymax, ystep)})
+        commonGrid = xr.Dataset({"x": xGrid, "y": yGrid})
         allZarrs = []
         for zarrStore in zarrs:
             xrZarr = xr.open_zarr(zarrStore)
             if xrZarr.dims["x"] != maxWidth or xrZarr.dims["y"] != maxHeight:
                 chunkSize = getChunkSize(dtype, chunkMbs)
-                xrZarr = xrZarr.interp_like(interpDataset) \
+                xrZarr = xrZarr.interp_like(commonGrid) \
                                .chunk({"x": chunkSize, "y": chunkSize, "t": 1})
             allZarrs.append(xrZarr)
         del zarrs

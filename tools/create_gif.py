@@ -13,11 +13,12 @@ from pathlib import Path
 ROOT_PATH = str(Path(__file__).parent.parent)
 sys.path.insert(0, ROOT_PATH)
 from utils.preview import createPreviewB64
+from utils.enums import RGB
 
 TMP_DIR = "tmp/"
 
 
-def create_gif(datacube: xr.Dataset, rgb: Dict[str, str], gif_name: str):
+def create_gif(datacube: xr.Dataset, rgb: Dict[RGB, str], gif_name: str):
     # Find where to put the temporary pictures
     matches = re.findall(r"(.*)\.gif", gif_name)
     if len(matches) == 0:
@@ -74,11 +75,13 @@ if __name__ == "__main__":
 
     # Attribute the RGB bands to the input assets
     if len(args.rgb) == 1:
-        rgb = {"R": args.rgb[0], "G": args.rgb[0], "B": args.rgb[0]}
+        rgb = {RGB.RED: args.rgb[0], RGB.GREEN: args.rgb[0],
+               RGB.BLUE: args.rgb[0]}
     elif len(args.rgb) == 2:
         raise ValueError("There must be 1 or 3 assets, not 2")
     elif len(args.rgb) == 3:
-        rgb = {"R": args.rgb[0], "G": args.rgb[1], "B": args.rgb[2]}
+        rgb = {RGB.RED: args.rgb[0], RGB.GREEN: args.rgb[1],
+               RGB.BLUE: args.rgb[2]}
     else:
         raise ValueError(f"There must be 1 or 3 assets, not {len(args.rgb)}")
     create_gif(datacube, rgb, gifPath)

@@ -1,7 +1,9 @@
 import xarray as xr
 import enum
-from typing import List
+from typing import List, Dict
 import numpy as np
+
+from .enums import ChunkingStrategy as CStrat
 
 
 class IntersectionType(enum.Enum):
@@ -12,25 +14,38 @@ class IntersectionType(enum.Enum):
     SAME = "same"
 
 
-DTYPE_BYTES = {
-    'byte': 1,
-    'uint16': 2,
-    'int16': 2,
-    'uint32': 4,
-    'int32': 4,
-    'float32': 4,
-    'float64': 8,
-}
+POTATO_CHUNK = {"x": 256, "y": 256, "t": 32}
+CARROT_CHUNK = {"x": 32, "y": 32, "t": 1024}
+SPINACH_CHUNK = {"x": 1024, "y": 1024, "t": 1}
 
 
-def getChunkSize(dtype: str, chunkMbs: float = 1):
-    # TODO: chunk size is not the correct one in the end
-    return int((chunkMbs * 1e6/DTYPE_BYTES[dtype])**0.5)
+def getChunkShape(dims: Dict[str, int],
+                  chunkingStrategy: CStrat = CStrat.POTATO) -> Dict[str, int]:
+    """
+    Generates chunks of pre-determined size based on a desired strategy.
+    For 'uint32' and 'int32' data types, they result in ~8Mb chunks.
+    """
 
+    def resizeTimeDepth(chunkShape: Dict[str, int], dims: Dict[str, int]):
+        while dims["t"] <= chunkShape["t"] / 4:
+            chunkShape["x"] *= 2
+            chunkShape["y"] *= 2
+            chunkShape["t"] = int(chunkShape["t"]/4)
+        return chunkShape
 
-def getChunkShape(dtype: str, chunkMbs: float = 1):
-    return (getChunkSize(dtype, chunkMbs),
-            getChunkSize(dtype, chunkMbs), 1)
+    if chunkingStrategy == CStrat.POTATO:
+        chunkShape = resizeTimeDepth(POTATO_CHUNK, dims)
+    elif chunkingStrategy == CStrat.CARROT:
+        chunkShape = resizeTimeDepth(CARROT_CHUNK, dims)
+    elif chunkingStrategy == CStrat.SPINACH:
+        chunkShape = SPINACH_CHUNK
+    else:
+        raise ValueError(f"Chunking strategy '{chunkingStrategy}' not defined")
+
+    chunkShape["x"] = min(chunkShape["x"], dims["x"])
+    chunkShape["y"] = min(chunkShape["y"], dims["y"])
+    chunkShape["t"] = min(chunkShape["t"], dims["t"])
+    return chunkShape
 
 
 def getBounds(ds: xr.Dataset):

@@ -9,6 +9,7 @@ from rasterio.warp import calculate_default_transform, reproject, \
 
 from utils.geometry import projectPolygon
 from utils.xarray import getChunkShape
+from utils.enums import ChunkingStrategy as CStrat
 
 
 class Raster:
@@ -79,8 +80,6 @@ class Raster:
 
         store = zarr.DirectoryStore(f"{zarrRootPath}/{self.band}")
 
-        chunkShape = getChunkShape(self.dtype, chunkMbs)
-
         xmin, ymin, xmax, ymax = self.bounds
         x = zarr.create(
             shape=(self.width,),
@@ -112,10 +111,13 @@ class Raster:
         t[:] = [rasterTimestamp]
         t.attrs['_ARRAY_DIMENSIONS'] = ['t']
 
+        chunkShape = getChunkShape({"x": self.width, "y": self.height, "t": 1},
+                                   CStrat.SPINACH)
+
         # Create zarr array for each band required
         zarray = zarr.create(
             shape=(self.width, self.height, 1),
-            chunks=chunkShape,
+            chunks=tuple(chunkShape.values()),
             dtype=self.dtype,
             store=store,
             overwrite=True,

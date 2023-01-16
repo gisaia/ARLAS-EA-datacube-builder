@@ -12,6 +12,7 @@ from flask_restx import Namespace, Resource
 from shapely.geometry import Point
 import smart_open as so
 import mr4mp
+from http import HTTPStatus
 
 from models.rasterDrivers.archiveTypes import ArchiveTypes
 from models.rasterDrivers.sentinel2_level2A_safe import Sentinel2_Level2A_safe
@@ -21,11 +22,15 @@ from models.rasterDrivers.sentinel2_level2A_theia \
 from models.request.datacube_build \
     import DATACUBE_BUILD_REQUEST, DatacubeBuildRequest
 from models.request.rasterGroup import RASTERGROUP_MODEL
+from models.request.asset import ASSET_MODEL
 from models.request.rasterFile import RASTERFILE_MODEL
 
 from models.response.datacube_build import DATACUBE_BUILD_RESPONSE, \
                                            DatacubeBuildResponse
+from models.errors import BadRequest, DownloadError, \
+                          MosaickingError, UploadError
 
+from utils.enums import RGB
 from utils.geometry import completeGrid
 from utils.objectStore import createInputObjectStore, \
                               getMapperOutputObjectStore, \
@@ -39,6 +44,7 @@ api = Namespace("cube",
                 description="Build a data cube from raster files")
 api.models[DATACUBE_BUILD_REQUEST.name] = DATACUBE_BUILD_REQUEST
 api.models[RASTERGROUP_MODEL.name] = RASTERGROUP_MODEL
+api.models[ASSET_MODEL.name] = ASSET_MODEL
 api.models[RASTERFILE_MODEL.name] = RASTERFILE_MODEL
 
 api.models[DATACUBE_BUILD_RESPONSE.name] = DATACUBE_BUILD_RESPONSE
@@ -78,7 +84,7 @@ def download(download_input: Tuple[DatacubeBuildRequest, int, int]) \
                 request.bands, request.targetResolution,
                 timestamp, TMP_DIR)
         else:
-            raise Exception(f"Archive type '{archiveType}' not accepted")
+            raise DownloadError(f"Archive type '{archiveType}' not accepted")
 
         api.logger.info(f"[group-{groupIdx}:file-{fileIdx}] Building ZARR")
         # Build the zarr dataset and add it to its group's list
@@ -90,7 +96,7 @@ def download(download_input: Tuple[DatacubeBuildRequest, int, int]) \
         return groupedDatasets
     except Exception as e:
         api.logger.error(f"[group-{groupIdx}:file-{fileIdx}]")
-        raise e
+        raise DownloadError(e.args[0])
 
 
 def merge(result_a: Dict[int, List[xr.Dataset]],
@@ -115,13 +121,15 @@ class DataCube_Build(Resource):
     def post(self):
         api.logger.info("[POST] /build")
 
-        request = DatacubeBuildRequest(**api.payload)
+        try:
+            request = DatacubeBuildRequest(**api.payload)
+        except Exception as e:
+            raise BadRequest(e.args[0])
 
         groupedDatasets: dict[int, List[xr.Dataset]] = {}
 
         centerMostGranule = {"group": int, "index": int}
         xmin, ymin, xmax, ymax = np.inf, np.inf, -np.inf, -np.inf
-        # TODO: what if there is no ROI here ?
         roiCentroid: Point = request.roi.centroid
         minDistance = np.inf
 
@@ -134,9 +142,12 @@ class DataCube_Build(Resource):
                 mapReduceIter.append((request, groupIdx, idx))
 
         # Download paralelly the groups of bands of each file
-        pool = mr4mp.pool()
-        groupedDatasets = pool.mapreduce(download, merge, mapReduceIter)
-        pool.close()
+        try:
+            pool = mr4mp.pool()
+            groupedDatasets = pool.mapreduce(download, merge, mapReduceIter)
+            pool.close()
+        except DownloadError as e:
+            raise e
 
         for timestamp, datasetList in groupedDatasets.items():
             for idx, dataset in enumerate(datasetList):
@@ -161,7 +172,7 @@ class DataCube_Build(Resource):
                 len(request.composition[0].rasters) == 1):
             try:
                 # Generate a grid extending the center granule
-                centerMostGranuleDS = groupedDatasets[
+                centerMostGranuleDS: xr.Dataset = groupedDatasets[
                     centerMostGranule["group"]][centerMostGranule["index"]]
                 lonStep = centerMostGranuleDS.get("x").diff("x").mean()
                 latStep = centerMostGranuleDS.get("y").diff("y").mean()
@@ -198,47 +209,63 @@ class DataCube_Build(Resource):
                             mergedDataset = ds
                     mergedDSPerBucket.append(mergedDataset.copy(deep=True))
 
-                dataCube = xr.concat(mergedDSPerBucket, dim="t")
+                datacube: xr.Dataset = xr.concat(mergedDSPerBucket, dim="t")
             except Exception as e:
                 api.logger.error(e)
                 traceback.print_exc()
-                return "Error when merging the intermediary files", 500
+                raise MosaickingError(e.args[0])
         else:
-            dataCube = groupedDatasets[list(groupedDatasets.keys())[0]][0]
+            datacube = groupedDatasets[list(groupedDatasets.keys())[0]][0]
         # TODO: merge manually dataset attributes
+
+        # Get the assets requested from the bands
+        for asset in request.assets:
+            if asset.value is not None:
+                datacube[asset.name] = eval(asset.value)
+
+        # Keep just the assets requested
+        requestedAssets = [asset.name for asset in request.assets]
 
         api.logger.info("Writing datacube to Object Store")
         try:
             datacubeUrl, mapper = getMapperOutputObjectStore(
                 request.dataCubePath)
-            chunkSize = getChunkSize(dataCube.attrs['dtype'])
-            dataCube.chunk({"x": chunkSize, "y": chunkSize, "t": 1}) \
+            chunkSize = getChunkSize(datacube.attrs['dtype'])
+            datacube.get(requestedAssets) \
+                    .chunk({"x": chunkSize, "y": chunkSize, "t": 1}) \
                     .to_zarr(mapper, mode="w")
         except Exception as e:
             api.logger.error(e)
             traceback.print_exc()
-            return "Error when writing the ZARR to the object store", 500
+            raise UploadError(f"Datacube: {e.args[0]}")
 
         api.logger.info("Uploading preview to Object Store")
         try:
+            # If all colors have been assigned, use them
+            if request.rgb != {}:
+                previewBands = request.rgb
             # Depending on the format of the Sentinel2 files,
             # bands are not named the same. It is not possible
-            # to check globally unless columns are standardized
-            if "B2" in request.bands \
-               and "B3" in request.bands \
-               and "B4" in request.bands:
-                previewBands = {"R": "B4", "G": "B3", "B": "B2"}
-            elif "B02" in request.bands \
-                 and "B03" in request.bands \
-                 and "B04" in request.bands:
-                previewBands = {"R": "B04", "G": "B03", "B": "B02"}
+            # to check globally unless columns are standardized.
+            # If RGB bands were used to construct composite bands,
+            # they are still used for the preview.
             else:
-                firstBand = request.bands[0]
-                previewBands = {"R": firstBand, "G": firstBand, "B": firstBand}
+                if "B2" in request.bands and "B3" in request.bands \
+                        and "B4" in request.bands:
+                    previewBands = {
+                        RGB.RED: "B4", RGB.GREEN: "B3", RGB.BLUE: "B2"}
+                elif "B02" in request.bands and "B03" in request.bands \
+                        and "B04" in request.bands:
+                    previewBands = {
+                        RGB.RED: "B04", RGB.GREEN: "B03", RGB.BLUE: "B02"}
+                else:
+                    firstBand: str = request.bands[0]
+                    previewBands = {RGB.RED: firstBand,
+                                    RGB.GREEN: firstBand,
+                                    RGB.BLUE: firstBand}
 
-            preview = createPreviewB64(
-                dataCube, previewBands,
-                f'{zarrRootPath}.png')
+            preview = createPreviewB64(datacube, previewBands,
+                                       f'{zarrRootPath}.png')
             client = createOutputObjectStore().client
 
             with so.open(f"{datacubeUrl}.png", "wb",
@@ -247,7 +274,7 @@ class DataCube_Build(Resource):
         except Exception as e:
             api.logger.error(e)
             traceback.print_exc()
-            return "Error when uploading preview to the object store", 500
+            raise UploadError(f"Preview: {e.args[0]}")
 
         # Clean up the files created
         if os.path.exists(zarrRootPath) and os.path.isdir(zarrRootPath):
@@ -256,4 +283,4 @@ class DataCube_Build(Resource):
         os.remove(f'{zarrRootPath}.png.aux.xml')
 
         return DatacubeBuildResponse(
-            datacubeUrl, f"{datacubeUrl}.png", preview), 200
+            datacubeUrl, f"{datacubeUrl}.png", preview), HTTPStatus.OK

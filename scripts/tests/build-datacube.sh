@@ -15,6 +15,21 @@ curl -X POST -H "Content-Type: application/json" -d '{
     ],
     "dataCubePath": "test_theia",
     "roi": "-1.0,42.688794,-0.5,42.87091",
-    "bands": ["B2", "B3", "B4"],
+    "assets": [
+        {
+            "name": "RMinusG",
+            "value": "datacube.B2 - datacube.B3",
+            "rgb": "RED"
+        },
+        {
+            "name": "B4",
+            "rgb": "GREEN"
+        },
+        {
+            "name": "NDVI",
+            "value": "(datacube.B8 - datacube[\u0027B5\u0027]) / (datacube.B8 + datacube.B5)",
+            "rgb": "BLUE"
+        }
+    ],
     "targetResolution": 20
-    }' http://localhost:5000/cube/build
+}' http://localhost:5000/cube/build

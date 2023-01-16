@@ -5,6 +5,8 @@ import logging
 from flask import Flask
 from rest_api import api
 
+from models.errors import AbstractError
+
 
 class App:
     def __init__(self, loggerLevel):
@@ -14,6 +16,10 @@ class App:
 
     def run(self, debug: bool = False, host="127.0.0.1"):
         self.app.run(debug=debug, host=host)
+
+    @api.errorhandler(AbstractError)
+    def handle_badRequest(err: AbstractError):
+        return err.__repr__(), err.code
 
 
 if __name__ == "__main__":

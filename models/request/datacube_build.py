@@ -1,7 +1,12 @@
 from flask_restx import Model, fields
+import re
+import numpy as np
+from typing import Dict
 
 from .rasterGroup import RASTERGROUP_MODEL, RasterGroup
+from .asset import ASSET_MODEL, Asset
 
+from utils.enums import RGB
 from utils.geometry import roi2geometry
 
 DATACUBE_BUILD_REQUEST = Model(
@@ -18,10 +23,10 @@ DATACUBE_BUILD_REQUEST = Model(
         "roi": fields.String(
             required=True,
             readonly=True,
-            description="The Region Of Interest (bbox or WKT Polygon) " +
-                        "to extract"),
-        "bands": fields.List(
-            fields.String,
+            description="The Region Of Interest to extract. " +
+                        "Accepted formats are BBOX or WKT POLYGON"),
+        "assets": fields.List(
+            fields.Nested(ASSET_MODEL),
             readonly=True,
             description="The list of bands to extract"),
         "targetResolution": fields.Integer(
@@ -38,12 +43,12 @@ DATACUBE_BUILD_REQUEST = Model(
 
 class DatacubeBuildRequest:
 
-    def __init__(self, composition, dataCubePath, bands,
+    def __init__(self, composition, dataCubePath, assets,
                  roi=None, targetResolution=None, targetProjection=None):
         self.composition = [
             RasterGroup(**rasterGroup) for rasterGroup in composition]
         self.dataCubePath = dataCubePath
-        self.bands = bands
+        self.assets = [Asset(**asset) for asset in assets]
         self.roi = roi2geometry(roi)
 
         self.targetResolution = targetResolution \
@@ -53,12 +58,48 @@ class DatacubeBuildRequest:
             if targetProjection is not None \
             else "EPSG:4326"
 
+        # Extract from the request which bands are required
+        bands = []
+        for asset in self.assets:
+            # If no value we take the band name
+            if asset.value is None:
+                bands.append(asset.name)
+            # If a value is given we need to extract the bands required
+            # from the expression
+            else:
+                match = re.findall(r'datacube\.((?!get|where\b)\w*)',
+                                   asset.value)
+                bands.extend(match)
+                match = re.findall(r'datacube\[[\'|\"](\w*)[\'|\"]\]',
+                                   asset.value)
+                bands.extend(match)
+                match = re.findall(r'datacube\.get\([\'|\"](\w*)[\'|\"]\)',
+                                   asset.value)
+                bands.extend(match)
+        self.bands = np.unique(bands)
+
+        # Check that RGB has been fully filled or not filled
+        self.rgb: Dict[RGB, str] = {}
+        for asset in self.assets:
+            if asset.rgb is not None:
+                if asset.rgb in self.rgb:
+                    raise ValueError(
+                        f"Too many assets given for color {asset.rgb.value}")
+                self.rgb[asset.rgb] = asset.name
+
+        if self.rgb != {} and len(self.rgb.keys()) != 3:
+            raise ValueError("The request should contain no assets with " +
+                             "a non null 'rgb' value or 'RED', 'GREEN' " +
+                             "and 'BLUE' should be assigned.")
+
     def __repr__(self):
         request = {}
         request["composition"] = self.composition
         request["dataCubePath"] = self.dataCubePath
         request["roi"] = self.roi
+        request["assets"] = self.assets
         request["bands"] = self.bands
+        request["rgb"] = self.rgb
         request["targetResolution"] = self.targetResolution
         request["targetProjection"] = self.targetProjection
 

@@ -46,7 +46,7 @@ The script `scripts/start-app.sh` is available as an example of how to launch th
 
 ```shell
 export DOCKER_DEFAULT_PLATFORM=linux/amd64 # For MacOSX
-docker build -t arlas-datacube-builder:latest .
+docker build -t gisaia/arlas-datacube-builder:latest .
 ```
 
 ### Starting the REST Service
@@ -54,5 +54,18 @@ docker build -t arlas-datacube-builder:latest .
 ```shell
 docker run --env-file credentials \
     -p 8080:5000 \
-    arlas-datacube-builder:latest
+    gisaia/arlas-datacube-builder:latest
 ```
+
+### Caching data
+
+It is possible to start the REST service with data already available, by using the tmp folder where requested files will be downloaded. In order to do so, one can mount a volume containing them as below.
+
+```shell
+docker run --env-file credentials \
+    -p 8080:5000 \
+    -v /ABSOLUTE/PATH/TO/DATA/:/app/tmp \
+    gisaia/arlas-datacube-builder:latest
+```
+
+The files need to be put in the `tmp` folder as they would be extracted from their archive.

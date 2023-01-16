@@ -9,7 +9,11 @@ WORKDIR /app
 
 RUN pip install -r requirements.txt
 
-COPY . /app
+COPY ./app.py /app/app.py
+COPY ./configs /app/configs
+COPY ./models /app/models
+COPY ./rest_api /app/rest_api
+COPY ./utils /app/utils
 
 ENTRYPOINT [ "python3" ]
 

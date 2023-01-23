@@ -186,7 +186,7 @@ class DataCube_Build(Resource):
                 timestamps = list(groupedDatasets.keys())
                 timestamps.sort()
 
-                mergedDSPerBucket = []
+                datacube: xr.Dataset = None
                 for t in timestamps:
                     mergedDataset = None
                     for dataset in groupedDatasets[t]:
@@ -207,9 +207,12 @@ class DataCube_Build(Resource):
                             mergedDataset = mergeDatasets(mergedDataset, ds)
                         else:
                             mergedDataset = ds
-                    mergedDSPerBucket.append(mergedDataset.copy(deep=True))
+                    if datacube:
+                        datacube = mergedDataset
+                    else:
+                        datacube = xr.concat(
+                            (datacube, mergedDataset), dim="t")
 
-                datacube: xr.Dataset = xr.concat(mergedDSPerBucket, dim="t")
             except Exception as e:
                 api.logger.error(e)
                 traceback.print_exc()

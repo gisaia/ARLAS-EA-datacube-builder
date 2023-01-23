@@ -13,45 +13,48 @@ ROOT_PATH = str(Path(__file__).parent.parent)
 
 script = "build-datacube.sh"
 
-print(psutil.cpu_percent(percpu=True))
-
 cpu_use = []
-t = [datetime.now()]
-cpu_use.append(psutil.cpu_percent(percpu=True))
+ram_use = []
+t = []
+
 p = subprocess.Popen(["sh", f'{ROOT_PATH}/scripts/tests/{script}'])
 
 while p.poll() is None:
-    time.sleep(1)
-    t.append(datetime.now())
-    cpu_use.append(psutil.cpu_percent(percpu=True))
+    t0 = datetime.now()
+    cpu = np.array(psutil.cpu_percent(percpu=True))
+    ram = psutil.virtual_memory().percent
+    n = 1
+    while (datetime.now() - t0).total_seconds() < 0.05:
+        cpu += np.array(psutil.cpu_percent(percpu=True))
+        ram += psutil.virtual_memory().percent
+        n += 1
+    # time.sleep(0.01)
+    t.append(t0)
+    cpu_use.append(cpu / n)
+    ram_use.append(ram / n)
 
 cpu_use = np.array(cpu_use)
 
 xfmt = md.DateFormatter('%H:%M:%S')
-_, ax = plt.subplots(2, 2)
+_, ax = plt.subplots()
 
-ax[0, 0].plot(t, cpu_use[:, 0])
-ax[0, 0].set_xlabel("Time")
-ax[0, 0].set_ylabel("CPU use (%)")
-ax[0, 0].set_title("CPU 1")
-ax[0, 0].xaxis.set_major_formatter(xfmt)
+ax.plot(t, cpu_use[:, 0], label="CPU 1")
+ax.plot(t, cpu_use[:, 1], label="CPU 2")
+ax.plot(t, cpu_use[:, 2], label="CPU 3")
+ax.plot(t, cpu_use[:, 3], label="CPU 4")
 
-ax[0, 1].plot(t, cpu_use[:, 1])
-ax[0, 1].set_xlabel("Time")
-ax[0, 1].set_ylabel("CPU use (%)")
-ax[0, 1].set_title("CPU 2")
-ax[0, 1].xaxis.set_major_formatter(xfmt)
+ax.set_xlabel("Time")
+ax.set_ylabel("CPU use (%)")
+ax.set_title("CPU use during build request")
+ax.xaxis.set_major_formatter(xfmt)
+ax.legend()
+plt.show()
 
-ax[1, 0].plot(t, cpu_use[:, 2])
-ax[1, 0].set_xlabel("Time")
-ax[1, 0].set_ylabel("CPU use (%)")
-ax[1, 0].set_title("CPU 3")
-ax[1, 0].xaxis.set_major_formatter(xfmt)
+_, ax = plt.subplots()
 
-ax[1, 1].plot(t, cpu_use[:, 3])
-ax[1, 1].set_xlabel("Time")
-ax[1, 1].set_ylabel("CPU use (%)")
-ax[1, 1].set_title("CPU 4")
-ax[1, 1].xaxis.set_major_formatter(xfmt)
-
+ax.plot(t, ram_use)
+ax.set_xlabel("Time")
+ax.set_ylabel("RAM use (%)")
+ax.set_title("RAM use during build request")
+ax.xaxis.set_major_formatter(xfmt)
 plt.show()

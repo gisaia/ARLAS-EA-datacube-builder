@@ -7,7 +7,8 @@ import xarray as xr
 from shapely.geometry import Polygon
 
 from models.raster import Raster
-from utils.xarray import getChunkSize
+from utils.xarray import getChunkShape
+from utils.enums import ChunkingStrategy as CStrat
 
 
 @dataclass
@@ -38,7 +39,6 @@ class AbstractRasterArchive(abc.ABC):
         zarrs = []
         maxWidth = 0
         maxHeight = 0
-        dtype = ""
 
         # Create all the zarr files/stores
         # Finds the most precise grid for the zarrs
@@ -46,7 +46,6 @@ class AbstractRasterArchive(abc.ABC):
             with rasterio.open(rasterPath) as rasterReader:
                 # Create Raster object
                 raster = Raster(band, rasterReader, targetProjection, polygon)
-                dtype = raster.dtype
 
                 # Create zarr store
                 zarrStore = raster.createZarrStore(
@@ -70,9 +69,9 @@ class AbstractRasterArchive(abc.ABC):
         for zarrStore in zarrs:
             xrZarr = xr.open_zarr(zarrStore)
             if xrZarr.dims["x"] != maxWidth or xrZarr.dims["y"] != maxHeight:
-                chunkSize = getChunkSize(dtype, chunkMbs)
+                chunkShape = getChunkShape(xrZarr.dims, CStrat.SPINACH)
                 xrZarr = xrZarr.interp_like(commonGrid) \
-                               .chunk({"x": chunkSize, "y": chunkSize, "t": 1})
+                               .chunk(chunkShape)
             allZarrs.append(xrZarr)
         del zarrs
 

@@ -36,7 +36,7 @@ from utils.objectStore import createInputObjectStore, \
                               getMapperOutputObjectStore, \
                               createOutputObjectStore
 from utils.preview import createPreviewB64
-from utils.xarray import getBounds, getChunkSize, mergeDatasets
+from utils.xarray import getBounds, getChunkShape, mergeDatasets
 
 from urllib.parse import urlparse
 
@@ -230,10 +230,12 @@ class DataCube_Build(Resource):
         try:
             datacubeUrl, mapper = getMapperOutputObjectStore(
                 request.dataCubePath)
-            chunkSize = getChunkSize(datacube.attrs['dtype'])
+
             datacube.get(requestedAssets) \
-                    .chunk({"x": chunkSize, "y": chunkSize, "t": 1}) \
+                    .chunk(getChunkShape(datacube.dims,
+                                         request.chunkingStrategy)) \
                     .to_zarr(mapper, mode="w")
+
         except Exception as e:
             api.logger.error(e)
             traceback.print_exc()

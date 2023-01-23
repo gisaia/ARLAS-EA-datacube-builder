@@ -6,7 +6,7 @@ from typing import Dict
 from .rasterGroup import RASTERGROUP_MODEL, RasterGroup
 from .asset import ASSET_MODEL, Asset
 
-from utils.enums import RGB
+from utils.enums import RGB, ChunkingStrategy as CStrat
 from utils.geometry import roi2geometry
 
 DATACUBE_BUILD_REQUEST = Model(
@@ -36,6 +36,17 @@ DATACUBE_BUILD_REQUEST = Model(
         "targetProjection": fields.String(
             readonly=True,
             description="The targeted projection. Default: 'EPSG:4326'."
+        ),
+        "chunkingStrategy": fields.String(
+            readonly=True,
+            description="Defines how we want the datacube to be chunked, " +
+                        "to facilitate further data processing. Three " +
+                        "strategies are available: 'carrot', 'potato' and " +
+                        "'spinach'. 'Carrot' creates deep temporal slices, " +
+                        "while 'spinach' chunks data on wide geographical " +
+                        "areas. 'Potato' is a balanced option, creating " +
+                        "an equally sized chunk.",
+            enum=["carrot", "potato", "spinach"]
         )
     }
 )
@@ -44,7 +55,8 @@ DATACUBE_BUILD_REQUEST = Model(
 class DatacubeBuildRequest:
 
     def __init__(self, composition, dataCubePath, assets,
-                 roi=None, targetResolution=None, targetProjection=None):
+                 roi=None, targetResolution=None, targetProjection=None,
+                 chunkingStrategy=None):
         self.composition = [
             RasterGroup(**rasterGroup) for rasterGroup in composition]
         self.dataCubePath = dataCubePath
@@ -57,6 +69,9 @@ class DatacubeBuildRequest:
         self.targetProjection = targetProjection \
             if targetProjection is not None \
             else "EPSG:4326"
+        self.chunkingStrategy = CStrat(chunkingStrategy) \
+            if chunkingStrategy is not None \
+            else CStrat.POTATO
 
         # Extract from the request which bands are required
         bands = []
@@ -102,5 +117,6 @@ class DatacubeBuildRequest:
         request["rgb"] = self.rgb
         request["targetResolution"] = self.targetResolution
         request["targetProjection"] = self.targetProjection
+        request["chunkingStrategy"] = self.chunkingStrategy
 
         return str(request)

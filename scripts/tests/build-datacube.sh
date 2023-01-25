@@ -7,28 +7,52 @@ curl -X POST -H "Content-Type: application/json" -d '{
                 {
                     "format": "2A-Theia",
                     "source": "Sentinel2",
-                    "path": "gs://gisaia-arlasea/SENTINEL2A_20221106-105923-597_L2A_T30TXN_D"
+                    "path": "gs://gisaia-arlasea/SENTINEL2B_20221201-105915-059_L2A_T30TYN_D"
+                },
+                {
+                    "format": "2A-Theia",
+                    "source": "Sentinel2",
+                    "path": "gs://gisaia-arlasea/SENTINEL2B_20221201-105917-780_L2A_T30TXN_D"
                 }
             ],
-            "timestamp": 1667732363
+            "timestamp": 1669892355
+        },
+        {
+            "rasters": [
+                {
+                    "format": "2A-Theia",
+                    "source": "Sentinel2",
+                    "path": "gs://gisaia-arlasea/SENTINEL2B_20221214-110910-728_L2A_T30TYN_D"
+                },
+                {
+                    "format": "2A-Theia",
+                    "source": "Sentinel2",
+                    "path": "gs://gisaia-arlasea/SENTINEL2B_20221214-110914-455_L2A_T30TXN_D"
+                }
+            ],
+            "timestamp": 1671016150
+        },
+        {
+            "rasters": [
+                {
+                    "format": "2A-Theia",
+                    "source": "Sentinel2",
+                    "path": "gs://gisaia-arlasea/SENTINEL2B_20221224-110912-094_L2A_T30TYN_D"
+                },
+                {
+                    "format": "2A-Theia",
+                    "source": "Sentinel2",
+                    "path": "gs://gisaia-arlasea/SENTINEL2B_20221224-110915-819_L2A_T30TXN_D"
+                }
+            ],
+            "timestamp": 1671880152
         }
     ],
     "dataCubePath": "test_theia",
-    "roi": "-1.0,42.688794,-0.5,42.87091",
+    "roi": "-0.661998,42.761697,-0.229943,43.106591",
     "assets": [
         {
-            "name": "RMinusG",
-            "value": "datacube.B2 - datacube.B3",
-            "rgb": "RED"
-        },
-        {
-            "name": "B4",
-            "rgb": "GREEN"
-        },
-        {
-            "name": "NDVI",
-            "value": "(datacube.B8 - datacube[\u0027B5\u0027]) / (datacube.B8 + datacube.B5)",
-            "rgb": "BLUE"
+            "name": "B5"
         }
     ],
     "targetResolution": 20

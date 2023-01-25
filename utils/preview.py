@@ -50,9 +50,11 @@ def createPreviewB64(dataset: xr.Dataset, assets: Dict[RGB, str],
         y=slice(int((ylen-256)/2), int((ylen+256)/2)))
 
     overview_data.rio.to_raster(f"{overviewPath}", driver="PNG")
+    overview_data.close()
+    del overview_data
 
     # encode in base64
-    binaryFileContent = open(overviewPath, 'rb').read()
-    base64Image = base64.b64encode(binaryFileContent).decode('utf-8')
+    with open(overviewPath, 'rb') as fb:
+        base64Image = base64.b64encode(fb.read()).decode('utf-8')
 
     return base64Image

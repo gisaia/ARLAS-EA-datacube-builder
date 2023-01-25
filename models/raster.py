@@ -1,3 +1,4 @@
+import os.path as path
 import numpy as np
 import zarr
 from rasterio.coords import BoundingBox
@@ -78,7 +79,7 @@ class Raster:
                         rasterTimestamp: int,
                         chunkMbs=1) -> zarr.DirectoryStore:
 
-        store = zarr.DirectoryStore(f"{zarrRootPath}/{self.band}")
+        store = zarr.DirectoryStore(path.join(zarrRootPath, self.band))
 
         xmin, ymin, xmax, ymax = self.bounds
         x = zarr.create(

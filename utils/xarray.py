@@ -78,6 +78,11 @@ def intersect(firstDataset: xr.Dataset,
 
 def mergeDatasets(firstDataset: xr.Dataset,
                   secondDataset: xr.Dataset) -> xr.Dataset:
+    if firstDataset is None:
+        return secondDataset
+    if secondDataset is None:
+        return firstDataset
+
     intersectTypes = intersect(firstDataset, secondDataset)
 
     # If no intersections, auto-magically combine

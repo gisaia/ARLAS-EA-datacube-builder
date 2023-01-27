@@ -177,7 +177,7 @@ def post_cube_build(request: DatacubeBuildRequest):
             groupedDatasets = pool.mapreduce(
                 download, merge_download, mapReduceIter)
     except DownloadError as e:
-        raise e
+        return e
 
     for timestamp, datasetList in groupedDatasets.items():
         for idx, dsAdress in enumerate(datasetList):
@@ -229,7 +229,7 @@ def post_cube_build(request: DatacubeBuildRequest):
         except Exception as e:
             api.logger.error(e)
             traceback.print_exc()
-            raise MosaickingError(e.args[0])
+            return MosaickingError(e.args[0])
     else:
         firstDataset = groupedDatasets[list(groupedDatasets.keys())[0]][0]
         with xr.open_zarr(firstDataset) as ds:
@@ -258,7 +258,7 @@ def post_cube_build(request: DatacubeBuildRequest):
     except Exception as e:
         api.logger.error(e)
         traceback.print_exc()
-        raise UploadError(f"Datacube: {e.args[0]}")
+        return UploadError(f"Datacube: {e.args[0]}")
 
     api.logger.info("Uploading preview to Object Store")
     try:
@@ -297,7 +297,7 @@ def post_cube_build(request: DatacubeBuildRequest):
     except Exception as e:
         api.logger.error(e)
         traceback.print_exc()
-        raise UploadError(f"Preview: {e.args[0]}")
+        return UploadError(f"Preview: {e.args[0]}")
 
     # Clean up the files created
     del datacube
@@ -326,5 +326,8 @@ class DataCube_Build(Resource):
         with concurrent.futures.ProcessPoolExecutor() as executor:
             f = executor.submit(post_cube_build, request)
             result = f.result()
+
+        if issubclass(type(result), AbstractError):
+            raise result
 
         return result, HTTPStatus.OK

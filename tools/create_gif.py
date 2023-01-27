@@ -40,7 +40,7 @@ def create_gif(datacube: xr.Dataset, rgb: Dict[RGB, str], gif_name: str):
 
 if __name__ == "__main__":
     """
-    Creates a gif of all the time slices of the given asset of the datacube.
+    Creates a gif of all the time slices of the given band of the datacube.
     If no path is given for the gif, then it is given the same as the datacube,
      with an added gif extension.
     """
@@ -73,16 +73,16 @@ if __name__ == "__main__":
 
     datacube = xr.open_zarr(args.datacubePath)
 
-    # Attribute the RGB bands to the input assets
+    # Attribute the RGB bands to the input bands
     if len(args.rgb) == 1:
         rgb = {RGB.RED: args.rgb[0], RGB.GREEN: args.rgb[0],
                RGB.BLUE: args.rgb[0]}
     elif len(args.rgb) == 2:
-        raise ValueError("There must be 1 or 3 assets, not 2")
+        raise ValueError("There must be 1 or 3 bands, not 2")
     elif len(args.rgb) == 3:
         rgb = {RGB.RED: args.rgb[0], RGB.GREEN: args.rgb[1],
                RGB.BLUE: args.rgb[2]}
     else:
-        raise ValueError(f"There must be 1 or 3 assets, not {len(args.rgb)}")
+        raise ValueError(f"There must be 1 or 3 bands, not {len(args.rgb)}")
     create_gif(datacube, rgb, gifPath)
     print(f"[SUCCESS] Created the gif {gifPath}")

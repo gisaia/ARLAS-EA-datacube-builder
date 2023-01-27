@@ -23,7 +23,7 @@ from models.rasterDrivers.sentinel2_level2A_theia \
 from models.request.datacube_build \
     import DATACUBE_BUILD_REQUEST, DatacubeBuildRequest
 from models.request.rasterGroup import RASTERGROUP_MODEL
-from models.request.asset import ASSET_MODEL
+from models.request.band import BAND_MODEL
 from models.request.rasterFile import RASTERFILE_MODEL
 
 from models.response.datacube_build import DATACUBE_BUILD_RESPONSE, \
@@ -45,7 +45,7 @@ api = Namespace("cube",
                 description="Build a data cube from raster files")
 api.models[DATACUBE_BUILD_REQUEST.name] = DATACUBE_BUILD_REQUEST
 api.models[RASTERGROUP_MODEL.name] = RASTERGROUP_MODEL
-api.models[ASSET_MODEL.name] = ASSET_MODEL
+api.models[BAND_MODEL.name] = BAND_MODEL
 api.models[RASTERFILE_MODEL.name] = RASTERFILE_MODEL
 
 api.models[DATACUBE_BUILD_RESPONSE.name] = DATACUBE_BUILD_RESPONSE
@@ -77,12 +77,12 @@ def download(download_input: Tuple[DatacubeBuildRequest, int, int]) \
         if archiveType == ArchiveTypes.S2L2A.value:
             rasterArchive = Sentinel2_Level2A_safe(
                 inputObjectStore, rasterFile.path,
-                request.bands, request.targetResolution,
+                request.productBands, request.targetResolution,
                 timestamp, TMP_DIR)
         elif archiveType == ArchiveTypes.S2L2A_THEIA.value:
             rasterArchive = Sentinel2_Level2A_Theia(
                 inputObjectStore, rasterFile.path,
-                request.bands, request.targetResolution,
+                request.productBands, request.targetResolution,
                 timestamp, TMP_DIR)
         else:
             raise DownloadError(f"Archive type '{archiveType}' not accepted")
@@ -236,23 +236,23 @@ def post_cube_build(request: DatacubeBuildRequest):
             datacube = ds
     # TODO: merge manually dataset attributes
 
-    # Get the assets requested from the bands
-    for asset in request.assets:
-        if asset.value is not None:
-            datacube[asset.name] = eval(asset.value)
+    # Compute the bands requested from the product bands
+    for band in request.bands:
+        if band.value is not None:
+            datacube[band.name] = eval(band.value)
 
-    # Keep just the assets requested
-    requestedAssets = [asset.name for asset in request.assets]
+    # Keep just the bands requested
+    requestedBands = [band.name for band in request.bands]
 
     api.logger.info("Writing datacube to Object Store")
     try:
         datacubeUrl, mapper = getMapperOutputObjectStore(
             request.dataCubePath)
 
-        datacube[requestedAssets] \
+        datacube[requestedBands] \
             .chunk(
                 getChunkShape(datacube.dims, request.chunkingStrategy)) \
-            .to_zarr(f"{zarrRootPath}_final", mode="w") \
+            .to_zarr(mapper, mode="w") \
             .close()
 
     except Exception as e:
@@ -271,16 +271,18 @@ def post_cube_build(request: DatacubeBuildRequest):
         # If RGB bands were used to construct composite bands,
         # they are still used for the preview.
         else:
-            if "B2" in request.bands and "B3" in request.bands \
-                    and "B4" in request.bands:
+            if "B2" in request.productBands \
+                    and "B3" in request.productBands \
+                    and "B4" in request.productBands:
                 previewBands = {
                     RGB.RED: "B4", RGB.GREEN: "B3", RGB.BLUE: "B2"}
-            elif "B02" in request.bands and "B03" in request.bands \
-                    and "B04" in request.bands:
+            elif "B02" in request.productBands \
+                    and "B03" in request.productBands \
+                    and "B04" in request.productBands:
                 previewBands = {
                     RGB.RED: "B04", RGB.GREEN: "B03", RGB.BLUE: "B02"}
             else:
-                firstBand: str = request.bands[0]
+                firstBand: str = request.bands[0].name
                 previewBands = {RGB.RED: firstBand,
                                 RGB.GREEN: firstBand,
                                 RGB.BLUE: firstBand}

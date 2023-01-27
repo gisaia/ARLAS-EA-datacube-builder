@@ -2,6 +2,7 @@ import os
 import re
 import zipfile
 from datetime import datetime
+from typing import List
 
 import smart_open as so
 from dateutil import parser
@@ -20,8 +21,9 @@ MED_RESOLUTION = 20
 
 class Sentinel2_Level2A_Theia(AbstractRasterArchive):
 
-    def __init__(self, objectStore: AbstractObjectStore, rasterURI, bands,
-                 targetResolution, rasterTimestamp, zipExtractPath="tmp/"):
+    def __init__(self, objectStore: AbstractObjectStore, rasterURI: str,
+                 bands: List[str], targetResolution: int, rasterTimestamp: int,
+                 zipExtractPath: int):
 
         self.rasterTimestamp = rasterTimestamp
         self._findBandsResolution(bands, targetResolution)

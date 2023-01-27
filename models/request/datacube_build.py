@@ -15,23 +15,27 @@ DATACUBE_BUILD_REQUEST = Model(
         "composition": fields.List(
             fields.Nested(RASTERGROUP_MODEL),
             required=True,
-            readonly=True),
+            readonly=True
+        ),
         "dataCubePath": fields.String(
             required=True,
             readonly=True,
-            description="The Object Store path to the data cube"),
+            description="The Object Store path to the datacube."
+        ),
         "roi": fields.String(
             required=True,
             readonly=True,
             description="The Region Of Interest to extract. " +
-                        "Accepted formats are BBOX or WKT POLYGON"),
+                        "Accepted formats are BBOX or WKT POLYGON."
+        ),
         "bands": fields.List(
             fields.Nested(BAND_MODEL),
             readonly=True,
-            description="The list of bands to extract"),
+            description="The list of bands to extract."
+        ),
         "targetResolution": fields.Integer(
             readonly=True,
-            description="The requested spatial resolution in meters"
+            description="The requested spatial resolution in meters."
         ),
         "targetProjection": fields.String(
             readonly=True,
@@ -108,6 +112,9 @@ class DatacubeBuildRequest:
                              "and 'BLUE' should be assigned.")
 
     def __repr__(self):
+        return str(self.as_dict())
+
+    def as_dict(self):
         request = {}
         request["composition"] = self.composition
         request["dataCubePath"] = self.dataCubePath
@@ -119,4 +126,4 @@ class DatacubeBuildRequest:
         request["targetProjection"] = self.targetProjection
         request["chunkingStrategy"] = self.chunkingStrategy
 
-        return str(request)
+        return request

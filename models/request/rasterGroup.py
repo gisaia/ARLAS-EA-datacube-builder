@@ -34,10 +34,13 @@ class RasterGroup:
         self.metadata = metadata
 
     def __repr__(self):
+        return str(self.as_dict())
+
+    def as_dict(self):
         rasterGroup = {}
-        rasterGroup["rasters"] = self.rasters
+        rasterGroup["rasters"] = [raster.as_dict() for raster in self.rasters]
         rasterGroup["timestamp"] = self.timestamp
         if self.metadata:
             rasterGroup["metadata"] = self.metadata
 
-        return str(rasterGroup)
+        return rasterGroup

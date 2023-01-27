@@ -19,6 +19,12 @@ RASTERFILE_MODEL = Model(
             required=True,
             readonly=True,
             description="The path to the raster file."
+        ),
+        "id": fields.String(
+            required=True,
+            readonly=True,
+            description="Identifier for the raster file," +
+                        "used for the traceability of the datacube."
         )
     }
 )
@@ -26,15 +32,20 @@ RASTERFILE_MODEL = Model(
 
 class RasterFile:
 
-    def __init__(self, format, source, path):
+    def __init__(self, format, source, path, id):
         self.format = format
         self.source = source
         self.path = path
+        self.id = id
 
     def __repr__(self):
+        return str(self.as_dict())
+
+    def as_dict(self):
         rasterFile = {}
         rasterFile["format"] = self.format
         rasterFile["source"] = self.source
         rasterFile["path"] = self.path
+        rasterFile["id"] = self.id
 
-        return str(rasterFile)
+        return rasterFile

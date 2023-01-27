@@ -29,10 +29,11 @@ from models.request.rasterFile import RASTERFILE_MODEL
 from models.response.datacube_build import DATACUBE_BUILD_RESPONSE, \
                                            DatacubeBuildResponse
 from models.errors import BadRequest, DownloadError, \
-                          MosaickingError, UploadError
+                          MosaickingError, UploadError, AbstractError
 
 from utils.enums import RGB
 from utils.geometry import completeGrid
+from utils.metadata import create_datacube_metadata
 from utils.objectStore import createInputObjectStore, \
                               getMapperOutputObjectStore, \
                               createOutputObjectStore
@@ -205,8 +206,10 @@ def post_cube_build(request: DatacubeBuildRequest):
             # Generate a grid extending the center granule
             with xr.open_zarr(groupedDatasets[centerGranuleIdx["group"]][
                         centerGranuleIdx["index"]]) as centerGranuleDs:
-                lonStep = centerGranuleDs.get("x").diff("x").mean()
-                latStep = centerGranuleDs.get("y").diff("y").mean()
+                lonStep = centerGranuleDs.get("x").diff("x").mean() \
+                    .values.tolist()
+                latStep = centerGranuleDs.get("y").diff("y").mean() \
+                    .values.tolist()
 
                 lon, lat = completeGrid(
                     centerGranuleDs.get("x"), lonStep,
@@ -243,15 +246,18 @@ def post_cube_build(request: DatacubeBuildRequest):
 
     # Keep just the bands requested
     requestedBands = [band.name for band in request.bands]
+    datacube = datacube[requestedBands]
+
+    # Add relevant datacube metadata
+    datacube = create_datacube_metadata(request, datacube, lonStep, latStep)
 
     api.logger.info("Writing datacube to Object Store")
     try:
         datacubeUrl, mapper = getMapperOutputObjectStore(
             request.dataCubePath)
 
-        datacube[requestedBands] \
-            .chunk(
-                getChunkShape(datacube.dims, request.chunkingStrategy)) \
+        datacube.chunk(getChunkShape(
+                datacube.dims, request.chunkingStrategy)) \
             .to_zarr(mapper, mode="w") \
             .close()
 

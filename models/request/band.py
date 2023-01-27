@@ -15,14 +15,19 @@ BAND_MODEL = Model(
         "value": fields.String(
             required=False,
             readonly=True,
-            description="An optional expression to create the desired band"
+            description="An optional expression to create the desired band."
         ),
         "rgb": fields.String(
-            require=False,
+            required=False,
             readonly=True,
             description="Specifies if the band is used for " +
                         "the RGB preview of the datacube.",
             enum=['RED', 'GREEN', 'BLUE']
+        ),
+        "description": fields.String(
+            required=False,
+            readonly=True,
+            description="A description of the requested band."
         )
     }
 )
@@ -30,7 +35,7 @@ BAND_MODEL = Model(
 
 class Band:
 
-    def __init__(self, name, value=None, rgb=None):
+    def __init__(self, name, value=None, rgb=None, description=None):
         self.name = name
         self.value = value
         if rgb is not None:
@@ -44,13 +49,19 @@ class Band:
                 raise ValueError("RGB value must be 'RED', 'GREEN' or 'BLUE'")
         else:
             self.rgb = None
+        self.description = description
 
     def __repr__(self):
+        return str(self.as_dict())
+
+    def as_dict(self):
         band = {}
         band["name"] = self.name
         if self.value:
             band["value"] = self.value
         if self.rgb:
             band["rgb"] = self.rgb
+        if self.description:
+            band["description"] = self.description
 
-        return str(band)
+        return band

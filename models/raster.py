@@ -76,8 +76,7 @@ class Raster:
 
     def createZarrStore(self, zarrRootPath: str,
                         productTimestamp: int,
-                        rasterTimestamp: int,
-                        chunkMbs=1) -> zarr.DirectoryStore:
+                        rasterTimestamp: int) -> zarr.DirectoryStore:
 
         store = zarr.DirectoryStore(path.join(zarrRootPath, self.band))
 

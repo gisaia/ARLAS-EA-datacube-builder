@@ -1,14 +1,16 @@
-import os
+import os.path as path
 import re
 import zipfile
 from datetime import datetime
-from typing import List
+from typing import Dict
 
 import smart_open as so
 from dateutil import parser
 from lxml import etree
 
 from models.objectStoreDrivers.abstractObjectStore import AbstractObjectStore
+from models.request.rasterProductType import RasterProductType
+from models.errors import DownloadError
 
 from .abstractRasterArchive import AbstractRasterArchive
 
@@ -20,24 +22,27 @@ MED_RESOLUTION = 20
 
 
 class Sentinel2_Level2A_Theia(AbstractRasterArchive):
+    PRODUCT_TYPE = RasterProductType(source="Sentinel2",
+                                     format="2A-Theia")
 
     def __init__(self, objectStore: AbstractObjectStore, rasterURI: str,
-                 bands: List[str], targetResolution: int, rasterTimestamp: int,
-                 zipExtractPath: int):
+                 bands: Dict[str, str], targetResolution: int,
+                 rasterTimestamp: int, zipExtractPath: int):
 
         self.rasterTimestamp = rasterTimestamp
         self._findBandsResolution(bands, targetResolution)
         self._extract_metadata(objectStore, rasterURI, bands, zipExtractPath)
 
-    def _findBandsResolution(self, bands, targetResolution):
+    def _findBandsResolution(self, bands: Dict[str, str],
+                             targetResolution: int):
         # Force the resolution to be higher than HIGH_RESOLUTION
         self.targetResolution = max(HIGH_RESOLUTION, targetResolution)
 
         self.bandsWithResolution = {}
-        for band in bands:
+        for band in bands.values():
             if band == "B1":
-                raise FileNotFoundError("Band B1 does not exist \
-                                        in this file format")
+                raise DownloadError("Band B1 does not exist " +
+                                    "in this file format")
             elif band == "B2":
                 self.bandsWithResolution[band] = HIGH_RESOLUTION
             elif band == "B3":
@@ -55,23 +60,25 @@ class Sentinel2_Level2A_Theia(AbstractRasterArchive):
             elif band == "B8A":
                 self.bandsWithResolution[band] = MED_RESOLUTION
             elif band == "B9":
-                raise FileNotFoundError("Band 'B9' does not exist \
-                                        in this file format")
+                raise DownloadError("Band 'B9' does not exist " +
+                                    "in this file format")
             elif band == "B10":
-                raise FileNotFoundError("Band 'B10' does not exist \
-                                        in this file format")
+                raise DownloadError("Band 'B10' does not exist " +
+                                    "in this file format")
             elif band == "B11":
                 self.bandsWithResolution[band] = MED_RESOLUTION
             elif band == "B12":
                 self.bandsWithResolution[band] = MED_RESOLUTION
             else:
-                raise FileNotFoundError(f"Band '{band}' not found")
+                raise DownloadError(f"Band '{band}' not found")
 
         # targetResolution can not be higher than the resolutions of the bands
         self.targetResolution = min(self.targetResolution,
                                     min(self.bandsWithResolution.values()))
 
-    def _extract_metadata(self, objectStore, rasterURI, bands, zipExtractPath):
+    def _extract_metadata(self, objectStore: AbstractObjectStore,
+                          rasterURI: str, bands: Dict[str, str],
+                          zipExtractPath: str):
         self.bandsToExtract = {}
 
         params = {'client': objectStore.client}
@@ -82,7 +89,7 @@ class Sentinel2_Level2A_Theia(AbstractRasterArchive):
                 # Extract timestamp of production of the product
                 for fileName in listOfFileNames:
                     if re.match(r".*MTD_ALL.xml", fileName):
-                        if not os.path.exists(zipExtractPath + fileName):
+                        if not path.exists(zipExtractPath + fileName):
                             rasterZip.extract(fileName, zipExtractPath)
                         rasterZip.extract(fileName, zipExtractPath)
                         metadata: etree._ElementTree = etree.parse(
@@ -94,15 +101,16 @@ class Sentinel2_Level2A_Theia(AbstractRasterArchive):
                                 PRODUCT_TIME, namespaces=root.nsmap)[0].text)))
                         break
 
-                for band in bands:
+                for datacubeBand, productBand in bands.items():
                     for fileName in listOfFileNames:
-                        if re.match(rf".*/.*_FRE_{band}\.tif", fileName):
-                            if not os.path.exists(zipExtractPath + fileName):
+                        if re.match(
+                                rf".*/.*_FRE_{productBand}\.tif", fileName):
+                            if not path.exists(zipExtractPath + fileName):
                                 rasterZip.extract(fileName, zipExtractPath)
 
-                            self.bandsToExtract[band] = zipExtractPath + \
-                                fileName
+                            self.bandsToExtract[datacubeBand] = path.join(
+                                zipExtractPath, fileName)
 
                 if len(bands) != len(self.bandsToExtract):
-                    raise FileNotFoundError("Some of the required files" +
-                                            "were not found")
+                    raise DownloadError("Some of the required files" +
+                                        "were not found")

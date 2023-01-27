@@ -1,10 +1,11 @@
 from flask_restx import Model, fields
-import re
-import numpy as np
-from typing import Dict, List
+from typing import Dict
 
+from .rasterProductType import RasterProductType
 from .rasterGroup import RASTERGROUP_MODEL, RasterGroup
 from .band import BAND_MODEL, Band
+
+from models.errors import BadRequest
 
 from utils.enums import RGB, ChunkingStrategy as CStrat
 from utils.geometry import roi2geometry
@@ -30,8 +31,15 @@ DATACUBE_BUILD_REQUEST = Model(
         ),
         "bands": fields.List(
             fields.Nested(BAND_MODEL),
+            required=True,
             readonly=True,
             description="The list of bands to extract."
+        ),
+        "aliases": fields.Raw(
+            required=True,
+            readonly=True,
+            description="The dictionnary of aliases for this datacube." +
+                        "Expected format (key:value) alias:(source, format)."
         ),
         "targetResolution": fields.Integer(
             readonly=True,
@@ -58,13 +66,27 @@ DATACUBE_BUILD_REQUEST = Model(
 
 class DatacubeBuildRequest:
 
-    def __init__(self, composition, dataCubePath, bands,
+    def __init__(self, composition, dataCubePath, bands, aliases: Dict,
                  roi=None, targetResolution=None, targetProjection=None,
                  chunkingStrategy=None):
         self.composition = [
             RasterGroup(**rasterGroup) for rasterGroup in composition]
-        self.dataCubePath = dataCubePath
+        self.dataCubePath: str = dataCubePath
         self.bands = [Band(**band) for band in bands]
+
+        # Check if aliases were given for every type of product requested
+        if type(aliases) is not dict:
+            raise BadRequest("Aliases must be a dictionnary")
+        self.aliases = {alias: RasterProductType(*_type)
+                        for alias, _type in aliases.items()}
+
+        for group in self.composition:
+            for file in group.rasters:
+                if file.type not in self.aliases.values():
+                    raise BadRequest("Aliases were not defined for type: " +
+                                     f"source:{file.type.source}, " +
+                                     f"format:{file.type.format}")
+
         self.roi = roi2geometry(roi)
 
         self.targetResolution = targetResolution \
@@ -77,37 +99,25 @@ class DatacubeBuildRequest:
             if chunkingStrategy is not None \
             else CStrat.POTATO
 
-        # Extract from the request which bands are required
-        productBands = []
-        for band in self.bands:
-            # If no value we take the band name
-            if band.value is None:
-                productBands.append(band.name)
-            # If a value is given we need to extract the bands required
-            # from the expression
-            else:
-                match = re.findall(r'datacube\.((?!get|where\b)\w*)',
-                                   band.value)
-                productBands.extend(match)
-                match = re.findall(r'datacube\[[\'|\"](\w*)[\'|\"]\]',
-                                   band.value)
-                productBands.extend(match)
-                match = re.findall(r'datacube\.get\([\'|\"](\w*)[\'|\"]\)',
-                                   band.value)
-                productBands.extend(match)
-        self.productBands: List[str] = list(np.unique(productBands))
-
         # Check that RGB has been fully filled or not filled
         self.rgb: Dict[RGB, str] = {}
         for band in self.bands:
             if band.rgb is not None:
                 if band.rgb in self.rgb:
-                    raise ValueError(
+                    raise BadRequest(
                         f"Too many bands given for color {band.rgb.value}")
                 self.rgb[band.rgb] = band.name
+            # If no value is given,
+            # then the band name needs to include an alias
+            if band.value is None:
+                if len(band.name.split(".", 1)) == 1:
+                    raise BadRequest(f"Band '{band.name}' needs to indicate " +
+                                     "the type of product it is linked to, " +
+                                     f"by writing it as 'alias.{band.name}'." +
+                                     " 'alias' is an alias to a product type.")
 
         if self.rgb != {} and len(self.rgb.keys()) != 3:
-            raise ValueError("The request should contain no bands with " +
+            raise BadRequest("The request should contain no bands with " +
                              "a non null 'rgb' value or 'RED', 'GREEN' " +
                              "and 'BLUE' should be assigned.")
 
@@ -120,10 +130,11 @@ class DatacubeBuildRequest:
         request["dataCubePath"] = self.dataCubePath
         request["roi"] = self.roi
         request["bands"] = self.bands
-        request["productBands"] = self.productBands
         request["rgb"] = self.rgb
         request["targetResolution"] = self.targetResolution
         request["targetProjection"] = self.targetProjection
         request["chunkingStrategy"] = self.chunkingStrategy
+        request["aliases"] = {alias: _type.as_dict()
+                              for alias, _type in self.aliases.items()}
 
-        return request
+        return str(request)

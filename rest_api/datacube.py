@@ -15,16 +15,15 @@ import mr4mp
 from http import HTTPStatus
 import concurrent.futures
 
-from models.rasterDrivers.archiveTypes import ArchiveTypes
-from models.rasterDrivers.sentinel2_level2A_safe import Sentinel2_Level2A_safe
-from models.rasterDrivers.sentinel2_level2A_theia \
-    import Sentinel2_Level2A_Theia
+from models.rasterDrivers import Sentinel2_Level2A_Safe, \
+                                 Sentinel2_Level2A_Theia
 
 from models.request.datacube_build \
     import DATACUBE_BUILD_REQUEST, DatacubeBuildRequest
 from models.request.rasterGroup import RASTERGROUP_MODEL
 from models.request.band import BAND_MODEL
 from models.request.rasterFile import RASTERFILE_MODEL
+from models.request.rasterProductType import RASTERPRODUCTTYPE_MODEL
 
 from models.response.datacube_build import DATACUBE_BUILD_RESPONSE, \
                                            DatacubeBuildResponse
@@ -38,6 +37,7 @@ from utils.objectStore import createInputObjectStore, \
                               getMapperOutputObjectStore, \
                               createOutputObjectStore
 from utils.preview import createPreviewB64
+from utils.request import getProductBands
 from utils.xarray import getBounds, getChunkShape, mergeDatasets
 
 from urllib.parse import urlparse
@@ -48,6 +48,7 @@ api.models[DATACUBE_BUILD_REQUEST.name] = DATACUBE_BUILD_REQUEST
 api.models[RASTERGROUP_MODEL.name] = RASTERGROUP_MODEL
 api.models[BAND_MODEL.name] = BAND_MODEL
 api.models[RASTERFILE_MODEL.name] = RASTERFILE_MODEL
+api.models[RASTERPRODUCTTYPE_MODEL.name] = RASTERPRODUCTTYPE_MODEL
 
 api.models[DATACUBE_BUILD_RESPONSE.name] = DATACUBE_BUILD_RESPONSE
 
@@ -71,22 +72,24 @@ def download(download_input: Tuple[DatacubeBuildRequest, int, int]) \
 
         inputObjectStore = createInputObjectStore(
                         urlparse(rasterFile.path).scheme)
-        archiveType = rasterFile.source + "-" + rasterFile.format
 
         api.logger.info(f"[group-{groupIdx}:file-{fileIdx}] Extracting bands")
         # Depending on archive type, extract desired data
-        if archiveType == ArchiveTypes.S2L2A.value:
-            rasterArchive = Sentinel2_Level2A_safe(
+        if rasterFile.type == Sentinel2_Level2A_Safe.PRODUCT_TYPE:
+            rasterArchive = Sentinel2_Level2A_Safe(
                 inputObjectStore, rasterFile.path,
-                request.productBands, request.targetResolution,
+                getProductBands(request, rasterFile.type),
+                request.targetResolution,
                 timestamp, TMP_DIR)
-        elif archiveType == ArchiveTypes.S2L2A_THEIA.value:
+        elif rasterFile.type == Sentinel2_Level2A_Theia.PRODUCT_TYPE:
             rasterArchive = Sentinel2_Level2A_Theia(
                 inputObjectStore, rasterFile.path,
-                request.productBands, request.targetResolution,
+                getProductBands(request, rasterFile.type),
+                request.targetResolution,
                 timestamp, TMP_DIR)
         else:
-            raise DownloadError(f"Archive type '{archiveType}' not accepted")
+            raise DownloadError(
+                f"Archive type '{rasterFile.type}' not accepted")
 
         api.logger.info(f"[group-{groupIdx}:file-{fileIdx}] Building ZARR")
         # Build the zarr dataset and add it to its group's list
@@ -99,6 +102,7 @@ def download(download_input: Tuple[DatacubeBuildRequest, int, int]) \
         return groupedDatasets
     except Exception as e:
         api.logger.error(f"[group-{groupIdx}:file-{fileIdx}]")
+        traceback.print_exc()
         raise DownloadError(e.args[0])
 
 
@@ -271,27 +275,12 @@ def post_cube_build(request: DatacubeBuildRequest):
         # If all colors have been assigned, use them
         if request.rgb != {}:
             previewBands = request.rgb
-        # Depending on the format of the Sentinel2 files,
-        # bands are not named the same. It is not possible
-        # to check globally unless columns are standardized.
-        # If RGB bands were used to construct composite bands,
-        # they are still used for the preview.
+        # Else use the first band of the datacube
         else:
-            if "B2" in request.productBands \
-                    and "B3" in request.productBands \
-                    and "B4" in request.productBands:
-                previewBands = {
-                    RGB.RED: "B4", RGB.GREEN: "B3", RGB.BLUE: "B2"}
-            elif "B02" in request.productBands \
-                    and "B03" in request.productBands \
-                    and "B04" in request.productBands:
-                previewBands = {
-                    RGB.RED: "B04", RGB.GREEN: "B03", RGB.BLUE: "B02"}
-            else:
-                firstBand: str = request.bands[0].name
-                previewBands = {RGB.RED: firstBand,
-                                RGB.GREEN: firstBand,
-                                RGB.BLUE: firstBand}
+            firstBand: str = list(datacube.data_vars.keys())[0]
+            previewBands = {RGB.RED: firstBand,
+                            RGB.GREEN: firstBand,
+                            RGB.BLUE: firstBand}
 
         preview = createPreviewB64(datacube, previewBands,
                                    f'{zarrRootPath}.png')

@@ -6,11 +6,11 @@ from typing import Dict
 from utils.enums import RGB
 
 
-def _bandTo256(dataset: xr.Dataset, asset: str, xfactor, yfactor, timeSlice):
+def _bandTo256(dataset: xr.Dataset, band: str, xfactor, yfactor, timeSlice):
     """
     Put a band values between 0 and 255
     """
-    band: xr.DataArray = dataset[asset].sel(t=timeSlice)
+    band: xr.DataArray = dataset[band].sel(t=timeSlice)
 
     """ Change the resolution """
     band = band.coarsen({"x": xfactor, "y": yfactor}, boundary="pad").mean()
@@ -26,7 +26,7 @@ def _bandTo256(dataset: xr.Dataset, asset: str, xfactor, yfactor, timeSlice):
     return band.transpose().reindex(y=band.y[::-1])
 
 
-def createPreviewB64(dataset: xr.Dataset, assets: Dict[RGB, str],
+def createPreviewB64(dataset: xr.Dataset, bands: Dict[RGB, str],
                      overviewPath: str, timeSlice=None):
     """
     Create a 256x256 preview of datacube and convert it to base64
@@ -38,9 +38,9 @@ def createPreviewB64(dataset: xr.Dataset, assets: Dict[RGB, str],
     yfactor = len(dataset.y) // 256
 
     overview_data = xr.Dataset()
-    for color, asset in assets.items():
+    for color, band in bands.items():
         overview_data[color.value] = _bandTo256(
-            dataset, asset, xfactor, yfactor, timeSlice)
+            dataset, band, xfactor, yfactor, timeSlice)
 
     # Cut the x and y to have 256x256
     xlen = len(overview_data.x)

@@ -1,10 +1,10 @@
 from flask_restx import Model, fields
 import re
 import numpy as np
-from typing import Dict
+from typing import Dict, List
 
 from .rasterGroup import RASTERGROUP_MODEL, RasterGroup
-from .asset import ASSET_MODEL, Asset
+from .band import BAND_MODEL, Band
 
 from utils.enums import RGB, ChunkingStrategy as CStrat
 from utils.geometry import roi2geometry
@@ -15,23 +15,27 @@ DATACUBE_BUILD_REQUEST = Model(
         "composition": fields.List(
             fields.Nested(RASTERGROUP_MODEL),
             required=True,
-            readonly=True),
+            readonly=True
+        ),
         "dataCubePath": fields.String(
             required=True,
             readonly=True,
-            description="The Object Store path to the data cube"),
+            description="The Object Store path to the datacube."
+        ),
         "roi": fields.String(
             required=True,
             readonly=True,
             description="The Region Of Interest to extract. " +
-                        "Accepted formats are BBOX or WKT POLYGON"),
-        "assets": fields.List(
-            fields.Nested(ASSET_MODEL),
+                        "Accepted formats are BBOX or WKT POLYGON."
+        ),
+        "bands": fields.List(
+            fields.Nested(BAND_MODEL),
             readonly=True,
-            description="The list of bands to extract"),
+            description="The list of bands to extract."
+        ),
         "targetResolution": fields.Integer(
             readonly=True,
-            description="The requested spatial resolution in meters"
+            description="The requested spatial resolution in meters."
         ),
         "targetProjection": fields.String(
             readonly=True,
@@ -54,13 +58,13 @@ DATACUBE_BUILD_REQUEST = Model(
 
 class DatacubeBuildRequest:
 
-    def __init__(self, composition, dataCubePath, assets,
+    def __init__(self, composition, dataCubePath, bands,
                  roi=None, targetResolution=None, targetProjection=None,
                  chunkingStrategy=None):
         self.composition = [
             RasterGroup(**rasterGroup) for rasterGroup in composition]
         self.dataCubePath = dataCubePath
-        self.assets = [Asset(**asset) for asset in assets]
+        self.bands = [Band(**band) for band in bands]
         self.roi = roi2geometry(roi)
 
         self.targetResolution = targetResolution \
@@ -74,49 +78,52 @@ class DatacubeBuildRequest:
             else CStrat.POTATO
 
         # Extract from the request which bands are required
-        bands = []
-        for asset in self.assets:
+        productBands = []
+        for band in self.bands:
             # If no value we take the band name
-            if asset.value is None:
-                bands.append(asset.name)
+            if band.value is None:
+                productBands.append(band.name)
             # If a value is given we need to extract the bands required
             # from the expression
             else:
                 match = re.findall(r'datacube\.((?!get|where\b)\w*)',
-                                   asset.value)
-                bands.extend(match)
+                                   band.value)
+                productBands.extend(match)
                 match = re.findall(r'datacube\[[\'|\"](\w*)[\'|\"]\]',
-                                   asset.value)
-                bands.extend(match)
+                                   band.value)
+                productBands.extend(match)
                 match = re.findall(r'datacube\.get\([\'|\"](\w*)[\'|\"]\)',
-                                   asset.value)
-                bands.extend(match)
-        self.bands = np.unique(bands)
+                                   band.value)
+                productBands.extend(match)
+        self.productBands: List[str] = list(np.unique(productBands))
 
         # Check that RGB has been fully filled or not filled
         self.rgb: Dict[RGB, str] = {}
-        for asset in self.assets:
-            if asset.rgb is not None:
-                if asset.rgb in self.rgb:
+        for band in self.bands:
+            if band.rgb is not None:
+                if band.rgb in self.rgb:
                     raise ValueError(
-                        f"Too many assets given for color {asset.rgb.value}")
-                self.rgb[asset.rgb] = asset.name
+                        f"Too many bands given for color {band.rgb.value}")
+                self.rgb[band.rgb] = band.name
 
         if self.rgb != {} and len(self.rgb.keys()) != 3:
-            raise ValueError("The request should contain no assets with " +
+            raise ValueError("The request should contain no bands with " +
                              "a non null 'rgb' value or 'RED', 'GREEN' " +
                              "and 'BLUE' should be assigned.")
 
     def __repr__(self):
+        return str(self.as_dict())
+
+    def as_dict(self):
         request = {}
         request["composition"] = self.composition
         request["dataCubePath"] = self.dataCubePath
         request["roi"] = self.roi
-        request["assets"] = self.assets
         request["bands"] = self.bands
+        request["productBands"] = self.productBands
         request["rgb"] = self.rgb
         request["targetResolution"] = self.targetResolution
         request["targetProjection"] = self.targetProjection
         request["chunkingStrategy"] = self.chunkingStrategy
 
-        return str(request)
+        return request

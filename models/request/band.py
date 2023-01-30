@@ -1,36 +1,41 @@
 from flask_restx import Model, fields
 from utils.enums import RGB
 
-ASSET_MODEL = Model(
-    "Asset",
+BAND_MODEL = Model(
+    "Band",
     {
         "name": fields.String(
             required=True,
             readonly=True,
-            description="The name of the asset requested. Can be a band " +
-                        "of the data (ie 'B05', 'B12') or a new asset to " +
+            description="The name of the band requested. Can be a band " +
+                        "of the data (ie 'B05', 'B12') or a new band to " +
                         "integrate in the data cube (ie renaming a band," +
                         " or creating a composite one)."
         ),
         "value": fields.String(
             required=False,
             readonly=True,
-            description="An optional expression to create the desired asset"
+            description="An optional expression to create the desired band."
         ),
         "rgb": fields.String(
-            require=False,
+            required=False,
             readonly=True,
-            description="Specifies if the asset is used for " +
+            description="Specifies if the band is used for " +
                         "the RGB preview of the datacube.",
             enum=['RED', 'GREEN', 'BLUE']
+        ),
+        "description": fields.String(
+            required=False,
+            readonly=True,
+            description="A description of the requested band."
         )
     }
 )
 
 
-class Asset:
+class Band:
 
-    def __init__(self, name, value=None, rgb=None):
+    def __init__(self, name, value=None, rgb=None, description=None):
         self.name = name
         self.value = value
         if rgb is not None:
@@ -44,13 +49,19 @@ class Asset:
                 raise ValueError("RGB value must be 'RED', 'GREEN' or 'BLUE'")
         else:
             self.rgb = None
+        self.description = description
 
     def __repr__(self):
-        asset = {}
-        asset["name"] = self.name
-        if self.value:
-            asset["value"] = self.value
-        if self.rgb:
-            asset["rgb"] = self.rgb
+        return str(self.as_dict())
 
-        return str(asset)
+    def as_dict(self):
+        band = {}
+        band["name"] = self.name
+        if self.value:
+            band["value"] = self.value
+        if self.rgb:
+            band["rgb"] = self.rgb
+        if self.description:
+            band["description"] = self.description
+
+        return band

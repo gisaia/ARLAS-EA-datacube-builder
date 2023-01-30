@@ -76,8 +76,7 @@ class Raster:
 
     def createZarrStore(self, zarrRootPath: str,
                         productTimestamp: int,
-                        rasterTimestamp: int,
-                        chunkMbs=1) -> zarr.DirectoryStore:
+                        rasterTimestamp: int) -> zarr.DirectoryStore:
 
         store = zarr.DirectoryStore(path.join(zarrRootPath, self.band))
 
@@ -127,14 +126,6 @@ class Raster:
 
         # Add band metadata to the zarr file
         zarray.attrs['_ARRAY_DIMENSIONS'] = ['x', 'y', 't']
-
-        self.metadata['width'] = self.width
-        self.metadata['height'] = self.height
-        self.metadata['dtype'] = self.dtype
-        self.metadata['bounds'] = self.bounds
-        self.metadata['transform'] = self.transform
-        self.metadata['crs'] = self.crs
-        self.metadata['productTimestamp'] = productTimestamp
 
         zarray[:, :, 0] = np.flip(np.transpose(self.rasterData), 1)
 

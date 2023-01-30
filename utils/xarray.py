@@ -92,8 +92,8 @@ def mergeDatasets(firstDataset: xr.Dataset,
 
     # If they represent the same extent of data, merge based on criterion
     if IntersectionType.SAME in intersectTypes:
-        if firstDataset.attrs["productTimestamp"] \
-           >= secondDataset.attrs["productTimestamp"]:
+        if firstDataset.get("t").values[0] \
+           >= secondDataset.get("t").values[0]:
             return firstDataset.combine_first(secondDataset)
         else:
             return secondDataset.combine_first(firstDataset)

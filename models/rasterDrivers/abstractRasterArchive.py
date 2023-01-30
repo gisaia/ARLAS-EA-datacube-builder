@@ -27,7 +27,7 @@ class AbstractRasterArchive(abc.ABC):
     # Loosely inspired from
     # https://gist.github.com/lucaswells/fd2fd73c513872966c1a0257afee1887
     def buildZarr(self, zarrRootPath, targetProjection: str,
-                  polygon: Polygon = None, chunkMbs=1) -> str:
+                  polygon: Polygon = None) -> str:
         """
         Build a chunked and zarr from raster files.
 
@@ -57,7 +57,7 @@ class AbstractRasterArchive(abc.ABC):
                 # Create zarr store
                 zarrStore = raster.createZarrStore(
                     zarrTmpRootPath, self.productTime,
-                    self.rasterTimestamp, chunkMbs=chunkMbs)
+                    self.rasterTimestamp)
 
                 # Retrieve the most precise axis for future interpolation
                 if raster.width > maxWidth:

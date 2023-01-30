@@ -23,16 +23,17 @@ from models.rasterDrivers.sentinel2_level2A_theia \
 from models.request.datacube_build \
     import DATACUBE_BUILD_REQUEST, DatacubeBuildRequest
 from models.request.rasterGroup import RASTERGROUP_MODEL
-from models.request.asset import ASSET_MODEL
+from models.request.band import BAND_MODEL
 from models.request.rasterFile import RASTERFILE_MODEL
 
 from models.response.datacube_build import DATACUBE_BUILD_RESPONSE, \
                                            DatacubeBuildResponse
 from models.errors import BadRequest, DownloadError, \
-                          MosaickingError, UploadError
+                          MosaickingError, UploadError, AbstractError
 
 from utils.enums import RGB
 from utils.geometry import completeGrid
+from utils.metadata import create_datacube_metadata
 from utils.objectStore import createInputObjectStore, \
                               getMapperOutputObjectStore, \
                               createOutputObjectStore
@@ -45,7 +46,7 @@ api = Namespace("cube",
                 description="Build a data cube from raster files")
 api.models[DATACUBE_BUILD_REQUEST.name] = DATACUBE_BUILD_REQUEST
 api.models[RASTERGROUP_MODEL.name] = RASTERGROUP_MODEL
-api.models[ASSET_MODEL.name] = ASSET_MODEL
+api.models[BAND_MODEL.name] = BAND_MODEL
 api.models[RASTERFILE_MODEL.name] = RASTERFILE_MODEL
 
 api.models[DATACUBE_BUILD_RESPONSE.name] = DATACUBE_BUILD_RESPONSE
@@ -77,12 +78,12 @@ def download(download_input: Tuple[DatacubeBuildRequest, int, int]) \
         if archiveType == ArchiveTypes.S2L2A.value:
             rasterArchive = Sentinel2_Level2A_safe(
                 inputObjectStore, rasterFile.path,
-                request.bands, request.targetResolution,
+                request.productBands, request.targetResolution,
                 timestamp, TMP_DIR)
         elif archiveType == ArchiveTypes.S2L2A_THEIA.value:
             rasterArchive = Sentinel2_Level2A_Theia(
                 inputObjectStore, rasterFile.path,
-                request.bands, request.targetResolution,
+                request.productBands, request.targetResolution,
                 timestamp, TMP_DIR)
         else:
             raise DownloadError(f"Archive type '{archiveType}' not accepted")
@@ -177,7 +178,7 @@ def post_cube_build(request: DatacubeBuildRequest):
             groupedDatasets = pool.mapreduce(
                 download, merge_download, mapReduceIter)
     except DownloadError as e:
-        raise e
+        return e
 
     for timestamp, datasetList in groupedDatasets.items():
         for idx, dsAdress in enumerate(datasetList):
@@ -205,8 +206,10 @@ def post_cube_build(request: DatacubeBuildRequest):
             # Generate a grid extending the center granule
             with xr.open_zarr(groupedDatasets[centerGranuleIdx["group"]][
                         centerGranuleIdx["index"]]) as centerGranuleDs:
-                lonStep = centerGranuleDs.get("x").diff("x").mean()
-                latStep = centerGranuleDs.get("y").diff("y").mean()
+                lonStep = centerGranuleDs.get("x").diff("x").mean() \
+                    .values.tolist()
+                latStep = centerGranuleDs.get("y").diff("y").mean() \
+                    .values.tolist()
 
                 lon, lat = completeGrid(
                     centerGranuleDs.get("x"), lonStep,
@@ -229,36 +232,39 @@ def post_cube_build(request: DatacubeBuildRequest):
         except Exception as e:
             api.logger.error(e)
             traceback.print_exc()
-            raise MosaickingError(e.args[0])
+            return MosaickingError(e.args[0])
     else:
         firstDataset = groupedDatasets[list(groupedDatasets.keys())[0]][0]
         with xr.open_zarr(firstDataset) as ds:
             datacube = ds
     # TODO: merge manually dataset attributes
 
-    # Get the assets requested from the bands
-    for asset in request.assets:
-        if asset.value is not None:
-            datacube[asset.name] = eval(asset.value)
+    # Compute the bands requested from the product bands
+    for band in request.bands:
+        if band.value is not None:
+            datacube[band.name] = eval(band.value)
 
-    # Keep just the assets requested
-    requestedAssets = [asset.name for asset in request.assets]
+    # Keep just the bands requested
+    requestedBands = [band.name for band in request.bands]
+    datacube = datacube[requestedBands]
+
+    # Add relevant datacube metadata
+    datacube = create_datacube_metadata(request, datacube, lonStep, latStep)
 
     api.logger.info("Writing datacube to Object Store")
     try:
         datacubeUrl, mapper = getMapperOutputObjectStore(
             request.dataCubePath)
 
-        datacube[requestedAssets] \
-            .chunk(
-                getChunkShape(datacube.dims, request.chunkingStrategy)) \
-            .to_zarr(f"{zarrRootPath}_final", mode="w") \
+        datacube.chunk(getChunkShape(
+                datacube.dims, request.chunkingStrategy)) \
+            .to_zarr(mapper, mode="w") \
             .close()
 
     except Exception as e:
         api.logger.error(e)
         traceback.print_exc()
-        raise UploadError(f"Datacube: {e.args[0]}")
+        return UploadError(f"Datacube: {e.args[0]}")
 
     api.logger.info("Uploading preview to Object Store")
     try:
@@ -271,16 +277,18 @@ def post_cube_build(request: DatacubeBuildRequest):
         # If RGB bands were used to construct composite bands,
         # they are still used for the preview.
         else:
-            if "B2" in request.bands and "B3" in request.bands \
-                    and "B4" in request.bands:
+            if "B2" in request.productBands \
+                    and "B3" in request.productBands \
+                    and "B4" in request.productBands:
                 previewBands = {
                     RGB.RED: "B4", RGB.GREEN: "B3", RGB.BLUE: "B2"}
-            elif "B02" in request.bands and "B03" in request.bands \
-                    and "B04" in request.bands:
+            elif "B02" in request.productBands \
+                    and "B03" in request.productBands \
+                    and "B04" in request.productBands:
                 previewBands = {
                     RGB.RED: "B04", RGB.GREEN: "B03", RGB.BLUE: "B02"}
             else:
-                firstBand: str = request.bands[0]
+                firstBand: str = request.bands[0].name
                 previewBands = {RGB.RED: firstBand,
                                 RGB.GREEN: firstBand,
                                 RGB.BLUE: firstBand}
@@ -295,7 +303,7 @@ def post_cube_build(request: DatacubeBuildRequest):
     except Exception as e:
         api.logger.error(e)
         traceback.print_exc()
-        raise UploadError(f"Preview: {e.args[0]}")
+        return UploadError(f"Preview: {e.args[0]}")
 
     # Clean up the files created
     del datacube
@@ -324,5 +332,8 @@ class DataCube_Build(Resource):
         with concurrent.futures.ProcessPoolExecutor() as executor:
             f = executor.submit(post_cube_build, request)
             result = f.result()
+
+        if issubclass(type(result), AbstractError):
+            raise result
 
         return result, HTTPStatus.OK

@@ -78,6 +78,12 @@ def intersect(firstDataset: xr.Dataset,
 
 def mergeDatasets(firstDataset: xr.Dataset,
                   secondDataset: xr.Dataset) -> xr.Dataset:
+    """
+    Merge two dtaasets based on their geographical bounds as well as
+    their bands. Performs a mosaicking for the bands in common, while just
+    appending the other bands to the resulting dataset.
+    """
+
     if firstDataset is None:
         return secondDataset
     if secondDataset is None:
@@ -90,10 +96,39 @@ def mergeDatasets(firstDataset: xr.Dataset,
         return xr.combine_by_coords(
             (firstDataset, secondDataset), combine_attrs="override")
 
+    # It is only possible to concatenate datasets that contain the same bands
+    common_bands = []
+    for band in firstDataset.data_vars.keys():
+        if band in secondDataset.data_vars.keys():
+            common_bands.append(band)
+
+    # If they intersect in any way but don't hold the same data,
+    # then no mosaickin is needed
+    if len(common_bands) == 0:
+        return xr.merge(
+            (firstDataset, secondDataset), combine_attrs="override")
+
+    restFirstDS = firstDataset[
+        list(set(firstDataset.data_vars.keys()).difference(common_bands))]
+    commonFirstDS = firstDataset[common_bands]
+
+    restSecondDS = secondDataset[
+        list(set(secondDataset.data_vars.keys()).difference(common_bands))]
+    commonSecondDS = secondDataset[common_bands]
+
+    return xr.merge(
+        (_mosaicking(commonFirstDS, commonSecondDS, intersectTypes),
+         restFirstDS, restSecondDS), combine_attrs="override")
+
+
+def _mosaicking(firstDataset: xr.Dataset,
+                secondDataset: xr.Dataset,
+                intersectTypes: List[IntersectionType]) -> xr.Dataset:
+
     # If they represent the same extent of data, merge based on criterion
     if IntersectionType.SAME in intersectTypes:
         if firstDataset.get("t").values[0] \
-           >= secondDataset.get("t").values[0]:
+                >= secondDataset.get("t").values[0]:
             return firstDataset.combine_first(secondDataset)
         else:
             return secondDataset.combine_first(firstDataset)

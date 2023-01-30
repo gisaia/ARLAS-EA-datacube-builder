@@ -1,6 +1,7 @@
 from flask_restx import Model, fields
 from utils.enums import RGB
 
+
 BAND_MODEL = Model(
     "Band",
     {
@@ -36,7 +37,7 @@ BAND_MODEL = Model(
 class Band:
 
     def __init__(self, name, value=None, rgb=None, description=None):
-        self.name = name
+        self.name: str = name
         self.value = value
         if rgb is not None:
             if rgb == RGB.RED.value:

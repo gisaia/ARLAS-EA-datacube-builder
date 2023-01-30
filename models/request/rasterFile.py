@@ -1,19 +1,14 @@
 from flask_restx import Model, fields
 
+from .rasterProductType import RASTERPRODUCTTYPE_MODEL, RasterProductType
+
 RASTERFILE_MODEL = Model(
     "RasterFile",
     {
-        "format": fields.String(
+        "type": fields.Nested(
+            RASTERPRODUCTTYPE_MODEL,
             required=True,
-            readonly=True,
-            description="The format of the raster file.",
-            enum=["2A-Theia", "2A-Safe"]
-        ),
-        "source": fields.String(
-            required=True,
-            readonly=True,
-            description="The source of the raster file.",
-            enum=["Sentinel2"]
+            readonly=True
         ),
         "path": fields.String(
             required=True,
@@ -32,19 +27,17 @@ RASTERFILE_MODEL = Model(
 
 class RasterFile:
 
-    def __init__(self, format, source, path, id):
-        self.format = format
-        self.source = source
-        self.path = path
-        self.id = id
+    def __init__(self, type, path, id):
+        self.type = RasterProductType(**type)
+        self.path: str = path
+        self.id: str = id
 
     def __repr__(self):
         return str(self.as_dict())
 
     def as_dict(self):
         rasterFile = {}
-        rasterFile["format"] = self.format
-        rasterFile["source"] = self.source
+        rasterFile["type"] = self.type.as_dict()
         rasterFile["path"] = self.path
         rasterFile["id"] = self.id
 

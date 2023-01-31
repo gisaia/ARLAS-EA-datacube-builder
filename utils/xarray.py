@@ -79,7 +79,7 @@ def intersect(firstDataset: xr.Dataset,
 def mergeDatasets(firstDataset: xr.Dataset,
                   secondDataset: xr.Dataset) -> xr.Dataset:
     """
-    Merge two dtaasets based on their geographical bounds as well as
+    Merge two datasets based on their geographical bounds as well as
     their bands. Performs a mosaicking for the bands in common, while just
     appending the other bands to the resulting dataset.
     """
@@ -127,11 +127,17 @@ def _mosaicking(firstDataset: xr.Dataset,
 
     # If they represent the same extent of data, merge based on criterion
     if IntersectionType.SAME in intersectTypes:
-        if firstDataset.get("t").values[0] \
-                >= secondDataset.get("t").values[0]:
-            return firstDataset.combine_first(secondDataset)
+        if firstDataset.attrs["productTimestamp"] \
+                >= secondDataset.attrs["productTimestamp"]:
+            ds = firstDataset.combine_first(secondDataset) \
+                    .assign_attrs({"productTimestamp":
+                                   firstDataset.attrs["productTimestamp"]})
+            return ds
         else:
-            return secondDataset.combine_first(firstDataset)
+            ds = secondDataset.combine_first(firstDataset) \
+                    .assign_attrs({"productTimestamp":
+                                   secondDataset.attrs["productTimestamp"]})
+            return ds
 
     firstBounds = getBounds(firstDataset)
     secondBounds = getBounds(secondDataset)

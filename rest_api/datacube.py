@@ -16,7 +16,8 @@ from http import HTTPStatus
 import concurrent.futures
 
 from models.rasterDrivers import Sentinel2_Level2A_Safe, \
-                                 Sentinel2_Level2A_Theia
+                                 Sentinel2_Level2A_Theia, \
+                                 Sentinel1_Theia
 
 from models.request.datacube_build \
     import DATACUBE_BUILD_REQUEST, DatacubeBuildRequest
@@ -83,6 +84,12 @@ def download(download_input: Tuple[DatacubeBuildRequest, int, int]) \
                 timestamp, TMP_DIR)
         elif rasterFile.type == Sentinel2_Level2A_Theia.PRODUCT_TYPE:
             rasterArchive = Sentinel2_Level2A_Theia(
+                inputObjectStore, rasterFile.path,
+                getProductBands(request, rasterFile.type),
+                request.targetResolution,
+                timestamp, TMP_DIR)
+        elif rasterFile.type == Sentinel1_Theia.PRODUCT_TYPE:
+            rasterArchive = Sentinel1_Theia(
                 inputObjectStore, rasterFile.path,
                 getProductBands(request, rasterFile.type),
                 request.targetResolution,

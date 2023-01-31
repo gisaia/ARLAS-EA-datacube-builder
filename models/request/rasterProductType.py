@@ -7,13 +7,13 @@ RASTERPRODUCTTYPE_MODEL = Model(
             required=True,
             readonly=True,
             description="The format of the raster product.",
-            enum=["2A-Theia", "2A-Safe"]
+            enum=["L2A-Theia", "L2A-SAFE", "L1-Theia"]
         ),
         "source": fields.String(
             required=True,
             readonly=True,
             description="The source of the raster product.",
-            enum=["Sentinel2"]
+            enum=["Sentinel2", "Sentinel1"]
         )
     }
 )
@@ -30,8 +30,8 @@ class RasterProductType:
 
     def as_dict(self):
         rasterProductType = {}
-        rasterProductType["path"] = self.source
-        rasterProductType["type"] = self.format
+        rasterProductType["source"] = self.source
+        rasterProductType["format"] = self.format
 
         return rasterProductType
 

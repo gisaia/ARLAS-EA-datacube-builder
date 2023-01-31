@@ -138,9 +138,8 @@ def mosaicking(merge_input) -> xr.Dataset:
             granuleGrid["y"] = lat[(lat[:] >= bounds[1])
                                    & (lat[:] <= bounds[3])]
             granuleGrid["x"], granuleGrid["y"] = completeGrid(
-                granuleGrid["x"], lonStep,
-                granuleGrid["y"], latStep,
-                bounds)
+                granuleGrid["x"], granuleGrid["y"],
+                lonStep, latStep, bounds)
 
             mergedDataset = mergeDatasets(
                 mergedDataset,
@@ -207,7 +206,8 @@ def post_cube_build(request: DatacubeBuildRequest):
     if not (len(request.composition) == 1 and
             len(request.composition[0].rasters) == 1):
         try:
-            # Generate a grid extending the center granule
+            # Generate a grid based on the step size of the center granule
+            # extending the center of the roi
             with xr.open_zarr(groupedDatasets[centerGranuleIdx["group"]][
                         centerGranuleIdx["index"]]) as centerGranuleDs:
                 lonStep = centerGranuleDs.get("x").diff("x").mean() \
@@ -215,10 +215,9 @@ def post_cube_build(request: DatacubeBuildRequest):
                 latStep = centerGranuleDs.get("y").diff("y").mean() \
                     .values.tolist()
 
-                lon, lat = completeGrid(
-                    centerGranuleDs.get("x"), lonStep,
-                    centerGranuleDs.get("y"), latStep,
-                    (xmin, ymin, xmax, ymax))
+                lon, lat = completeGrid([roiCentroid.x], [roiCentroid.y],
+                                        lonStep, latStep,
+                                        (xmin, ymin, xmax, ymax))
 
             # For each time bucket, create a mosaick of the datasets
             timestamps = list(groupedDatasets.keys())

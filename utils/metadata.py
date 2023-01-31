@@ -9,9 +9,6 @@ from models.metadata import HorizontalSpatialDimension, \
 
 def create_datacube_metadata(request: DatacubeBuildRequest,
                              datacube: xr.Dataset, xStep, yStep):
-    # From datacube get variables and dimensions
-    # Steps are not perfectly regular
-    # (due to the earth deformation on center granule)
     dimensions = {}
     dimensions["x"] = HorizontalSpatialDimension(
         axis="x", description="",

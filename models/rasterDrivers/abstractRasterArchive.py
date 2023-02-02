@@ -9,7 +9,9 @@ import rasterio
 import xarray as xr
 from shapely.geometry import Polygon
 
+from models.objectStoreDrivers.abstractObjectStore import AbstractObjectStore
 from models.raster import Raster
+
 from utils.xarray import getChunkShape
 from utils.enums import ChunkingStrategy as CStrat
 
@@ -23,6 +25,12 @@ class AbstractRasterArchive(abc.ABC):
     productTime: int
     targetResolution: float
     rasterTimestamp: int
+
+    @abc.abstractmethod
+    def __init__(self, objectStore: AbstractObjectStore, rasterURI: str,
+                 bands: Dict[str, str], targetResolution: int,
+                 rasterTimestamp: int, zipExtractPath: str):
+        pass
 
     # Loosely inspired from
     # https://gist.github.com/lucaswells/fd2fd73c513872966c1a0257afee1887

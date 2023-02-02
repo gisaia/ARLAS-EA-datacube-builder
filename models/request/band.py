@@ -1,5 +1,8 @@
 from flask_restx import Model, fields
 from utils.enums import RGB
+from models.errors import BadRequest
+
+from matplotlib import cm
 
 
 BAND_MODEL = Model(
@@ -25,6 +28,12 @@ BAND_MODEL = Model(
                         "the RGB preview of the datacube.",
             enum=['RED', 'GREEN', 'BLUE']
         ),
+        "cmap": fields.String(
+            required=False,
+            readonly=True,
+            description="The matplotlib color map to use for " +
+                        "the datacube's preview."
+        ),
         "description": fields.String(
             required=False,
             readonly=True,
@@ -36,7 +45,8 @@ BAND_MODEL = Model(
 
 class Band:
 
-    def __init__(self, name, value=None, rgb=None, description=None):
+    def __init__(self, name, value=None, rgb=None,
+                 cmap=None, description=None):
         self.name: str = name
         self.value = value
         if rgb is not None:
@@ -47,9 +57,15 @@ class Band:
             elif rgb == RGB.BLUE.value:
                 self.rgb = RGB.BLUE
             else:
-                raise ValueError("RGB value must be 'RED', 'GREEN' or 'BLUE'")
+                raise BadRequest("RGB value must be 'RED', 'GREEN' or 'BLUE'")
         else:
             self.rgb = None
+
+        if cmap is not None:
+            if cmap not in cm._cmap_registry:
+                raise BadRequest(f"Color map '{cmap}' does not exist " +
+                                 "in matplotlib's color map registry.")
+            self.cmap = cmap
         self.description = description
 
     def __repr__(self):
@@ -62,6 +78,8 @@ class Band:
             band["value"] = self.value
         if self.rgb:
             band["rgb"] = self.rgb
+        if self.cmap:
+            band["cmap"] = self.cmap
         if self.description:
             band["description"] = self.description
 

@@ -100,7 +100,8 @@ curl -X POST -H "Content-Type: application/json" -d '{
     "bands": [
         {
             "name": "S2Theia.B5",
-            "description": "This is a description"
+            "description": "This is a description",
+            "cmap": "viridis"
         },
         {
             "name": "S2Safe.B05"

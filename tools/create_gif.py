@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 ROOT_PATH = str(Path(__file__).parent.parent)
 sys.path.insert(0, ROOT_PATH)
-from utils.preview import createPreviewB64
+from utils.preview import createPreviewB64, createPreviewB64Cmap
 from utils.enums import RGB
 
 TMP_DIR = "tmp/"
@@ -29,12 +29,16 @@ def create_gif(datacube: xr.Dataset, rgb: Dict[RGB, str], gif_name: str):
 
     # Generate the pictures for the gif
     for t in datacube.t.values:
-        createPreviewB64(datacube, rgb,
-                         path.join(TMP_DIR, gifRootPath, f"{t}.jpg"), t)
+        if len(rgb) == 3:
+            createPreviewB64(datacube, rgb,
+                             path.join(TMP_DIR, gifRootPath, f"{t}.png"), t)
+        else:
+            createPreviewB64Cmap(datacube, rgb[RGB.RED], f"{t}.png")
 
     # Create the gif and clean-up
     os.system(f"cd {path.join(TMP_DIR, gifRootPath)};" +
-              f"convert -delay 100 -loop 0 *.jpg {path.join(ROOT_PATH, gif_name)}")
+              "convert -delay 100 -loop 0 *.png " +
+              path.join(ROOT_PATH, gif_name))
     shutil.rmtree(f"{path.join(TMP_DIR, gifRootPath)}")
 
 

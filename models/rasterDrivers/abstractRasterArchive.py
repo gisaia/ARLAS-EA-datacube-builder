@@ -50,7 +50,7 @@ class AbstractRasterArchive(abc.ABC):
         # Create all the zarr files/stores
         # Finds the most precise grid for the zarrs
         for band, rasterPath in self.bandsToExtract.items():
-            with rasterio.open(rasterPath) as rasterReader:
+            with rasterio.open(rasterPath, "r+") as rasterReader:
                 # Create Raster object
                 raster = Raster(band, rasterReader, targetProjection, polygon)
 

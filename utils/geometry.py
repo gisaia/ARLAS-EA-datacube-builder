@@ -52,9 +52,9 @@ def projectPolygon(polygon: Polygon, src_crs: str, dst_crs: str) -> Polygon:
         })["coordinates"][0])
 
 
-def completeGrid(longitudes: xr.DataArray | np.ndarray, longitudeStep: float,
-                 latitudes: xr.DataArray | np.ndarray, latitudeStep: float,
-                 bounds: tuple):
+def completeGrid(longitudes: xr.DataArray | np.ndarray,
+                 latitudes: xr.DataArray | np.ndarray,
+                 longitudeStep: float, latitudeStep: float, bounds: tuple):
     """
     Completes the coordinates arrays to represent the full extent of 'bounds'
     (lonmin, latmin, lonmax, latmax), according to the input steps.

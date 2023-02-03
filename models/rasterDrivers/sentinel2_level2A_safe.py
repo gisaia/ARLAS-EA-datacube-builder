@@ -25,11 +25,11 @@ LOW_RESOLUTION = 60
 
 class Sentinel2_Level2A_Safe(AbstractRasterArchive):
     PRODUCT_TYPE = RasterProductType(source="Sentinel2",
-                                     format="2A-Safe")
+                                     format="L2A-SAFE")
 
     def __init__(self, objectStore: AbstractObjectStore, rasterURI: str,
                  bands: Dict[str, str], targetResolution: int,
-                 rasterTimestamp: int, zipExtractPath: int):
+                 rasterTimestamp: int, zipExtractPath: str):
 
         self.rasterTimestamp = rasterTimestamp
         self._findBandsResolution(bands, targetResolution)
@@ -145,5 +145,5 @@ class Sentinel2_Level2A_Safe(AbstractRasterArchive):
                                 zipExtractPath, fileName)
 
                 if len(bands) != len(self.bandsToExtract):
-                    raise DownloadError("Some of the required files" +
+                    raise DownloadError("Some of the required files " +
                                         "were not found")

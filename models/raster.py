@@ -16,42 +16,39 @@ from utils.enums import ChunkingStrategy as CStrat
 class Raster:
 
     def __init__(self, band: str, rasterReader: DatasetReader,
-                 targetProjection, polygon: Polygon = None):
+                 targetProjection, polygon: Polygon):
         self.band = band
         self.dtype = rasterReader.dtypes[0].lower()
         self.crs = targetProjection
 
-        # If there is a polygon, extract the ROI in local referential
-        if polygon:
+        # Extract the ROI in local referential
+        if rasterReader.crs is not None:
             localProjectionPolygon = projectPolygon(
                 polygon, targetProjection, rasterReader.crs)
-
-            self.rasterData, src_transform = mask(
-                rasterReader, [localProjectionPolygon], crop=True)
-
-            self.rasterData = np.squeeze(self.rasterData)
-
-            self.width = self.rasterData.shape[1]
-            self.height = self.rasterData.shape[0]
-
-            # Find the new bounding box of the data
-            bounds = rasterReader.bounds
-            rasterPolygon = Polygon([
-                    (bounds.left, bounds.bottom),
-                    (bounds.right, bounds.bottom),
-                    (bounds.right, bounds.top),
-                    (bounds.left, bounds.top),
-                    (bounds.left, bounds.bottom)])
-
-            intersectionBounds = localProjectionPolygon.intersection(
-                rasterPolygon).bounds
-            self.bounds = BoundingBox(*intersectionBounds)
         else:
-            self.rasterData = rasterReader.read(1)
-            self.width = rasterReader.width
-            self.height = rasterReader.height
-            self.bounds = rasterReader.bounds
-            src_transform = rasterReader.transform
+            localProjectionPolygon = projectPolygon(
+                polygon, targetProjection, "EPSG:4326")
+
+        self.rasterData, src_transform = mask(
+            rasterReader, [localProjectionPolygon], crop=True)
+
+        self.rasterData: np.ndarray = np.squeeze(self.rasterData)
+
+        self.width = self.rasterData.shape[1]
+        self.height = self.rasterData.shape[0]
+
+        # Find the new bounding box of the data
+        bounds = rasterReader.bounds
+        rasterPolygon = Polygon([
+                (bounds.left, bounds.bottom),
+                (bounds.right, bounds.bottom),
+                (bounds.right, bounds.top),
+                (bounds.left, bounds.top),
+                (bounds.left, bounds.bottom)])
+
+        intersectionBounds = localProjectionPolygon.intersection(
+            rasterPolygon).bounds
+        self.bounds = BoundingBox(*intersectionBounds)
 
         # Project the raster in the target projection
         self.transform, self.width, self.height = calculate_default_transform(
@@ -126,6 +123,7 @@ class Raster:
 
         # Add band metadata to the zarr file
         zarray.attrs['_ARRAY_DIMENSIONS'] = ['x', 'y', 't']
+        self.metadata['productTimestamp'] = productTimestamp
 
         zarray[:, :, 0] = np.flip(np.transpose(self.rasterData), 1)
 

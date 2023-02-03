@@ -90,6 +90,10 @@ class AbstractRasterArchive(abc.ABC):
                     chunkShape = getChunkShape(xrZarr.dims, CStrat.SPINACH)
                     xrZarr = xrZarr.interp_like(commonGrid) \
                                    .chunk(chunkShape)
+                # If raster is Sentinel2, replace negative values with NaN
+                if type(self).PRODUCT_TYPE.source == "Sentinel2":
+                    for band in xrZarr.data_vars:
+                        xrZarr[band] = xrZarr[band].where(xrZarr[band] >= 0)
                 if mergedBands is None:
                     mergedBands = xrZarr
                 else:

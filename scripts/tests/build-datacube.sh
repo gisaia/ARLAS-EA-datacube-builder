@@ -110,7 +110,9 @@ curl -X POST -H "Content-Type: application/json" -d '{
             "name": "S1Theia.test"
         },
         {
-            "name": "S1SAFE.grd-vh"
+            "name": "S1SAFE.grd-vh",
+            "min": 0,
+            "max": 1000
         }
     ],
     "targetResolution": 20,

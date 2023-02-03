@@ -22,7 +22,9 @@ class Sentinel1_Theia(AbstractRasterArchive):
                  rasterTimestamp: int, zipExtractPath: str):
 
         if len(bands) != 1:
-            raise DownloadError("There is only one band in this product type")
+            raise DownloadError(
+                f"There is only one band in {self.PRODUCT_TYPE.source} " +
+                self.PRODUCT_TYPE.format)
         self.rasterTimestamp = rasterTimestamp
         self.targetResolution = targetResolution
         self._extract_metadata(objectStore, rasterURI, bands, zipExtractPath)

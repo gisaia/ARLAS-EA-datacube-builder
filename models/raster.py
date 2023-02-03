@@ -76,8 +76,10 @@ class Raster:
         reproject(source=self.rasterData,
                   destination=projectedRasterData,
                   src_crs=rasterReader.crs,
+                  src_nodata=rasterReader.nodata,
                   src_transform=src_transform,
                   dst_crs=targetProjection,
+                  dst_nodata=None,
                   dst_transform=self.transform,
                   resampling=Resampling.nearest)
         self.rasterData = projectedRasterData

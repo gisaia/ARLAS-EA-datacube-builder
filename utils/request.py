@@ -1,8 +1,14 @@
-from typing import Dict
+from typing import Dict, Type
 import re
 
 from models.request.datacube_build import DatacubeBuildRequest
 from models.request.rasterProductType import RasterProductType
+from models.errors import BadRequest
+from models.rasterDrivers import AbstractRasterArchive, \
+                                 Sentinel2_Level2A_Safe, \
+                                 Sentinel2_Level2A_Theia, \
+                                 Sentinel1_Theia, \
+                                 Sentinel1_Level1_Safe
 
 
 def getProductBands(request: DatacubeBuildRequest,
@@ -41,3 +47,17 @@ def getProductBands(request: DatacubeBuildRequest,
                     productBands[m] = band_name
 
     return productBands
+
+
+def getRasterDriver(rasterProductType) -> Type[AbstractRasterArchive]:
+    if rasterProductType == Sentinel2_Level2A_Safe.PRODUCT_TYPE:
+        return Sentinel2_Level2A_Safe
+    elif rasterProductType == Sentinel2_Level2A_Theia.PRODUCT_TYPE:
+        return Sentinel2_Level2A_Theia
+    elif rasterProductType == Sentinel1_Theia.PRODUCT_TYPE:
+        return Sentinel1_Theia
+    elif rasterProductType == Sentinel1_Level1_Safe.PRODUCT_TYPE:
+        return Sentinel1_Level1_Safe
+    else:
+        raise BadRequest(
+            f"Archive type '{rasterProductType}' does not have a driver")

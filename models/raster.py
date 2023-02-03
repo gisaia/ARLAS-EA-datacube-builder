@@ -1,12 +1,16 @@
 import os.path as path
 import numpy as np
 import zarr
+import math
+from shapely.geometry import Polygon
+
 from rasterio.coords import BoundingBox
 from rasterio.io import DatasetReader
 from rasterio.mask import mask
-from shapely.geometry import Polygon
 from rasterio.warp import calculate_default_transform, reproject, \
     Resampling, transform_bounds
+from rasterio.transform import IDENTITY, from_gcps
+
 
 from utils.geometry import projectPolygon
 from utils.xarray import getChunkShape
@@ -22,12 +26,21 @@ class Raster:
         self.crs = targetProjection
 
         # Extract the ROI in local referential
-        if rasterReader.crs is not None:
-            localProjectionPolygon = projectPolygon(
+        if rasterReader.crs is None:
+            rasterReader.crs = "EPSG:4326"
+        localProjectionPolygon = projectPolygon(
                 polygon, targetProjection, rasterReader.crs)
-        else:
-            localProjectionPolygon = projectPolygon(
-                polygon, targetProjection, "EPSG:4326")
+
+        # Some raster files are not georeferenced with transform but with GCP
+        if rasterReader.transform == IDENTITY:
+            gcps = rasterReader.get_gcps()[0]
+            ul = gcps[0]
+            endOfRow = math.ceil(rasterReader.bounds.right / gcps[1].col)
+            ur = gcps[endOfRow]
+            ll = gcps[- 1 - endOfRow]
+            lr = gcps[-1]
+
+            rasterReader.transform = from_gcps([ul, ur, ll, lr])
 
         self.rasterData, src_transform = mask(
             rasterReader, [localProjectionPolygon], crop=True)

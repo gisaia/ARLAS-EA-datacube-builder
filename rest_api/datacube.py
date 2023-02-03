@@ -15,10 +15,6 @@ import mr4mp
 from http import HTTPStatus
 import concurrent.futures
 
-from models.rasterDrivers import Sentinel2_Level2A_Safe, \
-                                 Sentinel2_Level2A_Theia, \
-                                 Sentinel1_Theia
-
 from models.request.datacube_build \
     import DATACUBE_BUILD_REQUEST, DatacubeBuildRequest
 from models.request.rasterGroup import RASTERGROUP_MODEL
@@ -38,7 +34,7 @@ from utils.objectStore import createInputObjectStore, \
                               getMapperOutputObjectStore, \
                               createOutputObjectStore
 from utils.preview import createPreviewB64
-from utils.request import getProductBands
+from utils.request import getProductBands, getRasterDriver
 from utils.xarray import getBounds, getChunkShape, mergeDatasets
 
 from urllib.parse import urlparse
@@ -76,27 +72,11 @@ def download(download_input: Tuple[DatacubeBuildRequest, int, int]) \
 
         api.logger.info(f"[group-{groupIdx}:file-{fileIdx}] Extracting bands")
         # Depending on archive type, extract desired data
-        if rasterFile.type == Sentinel2_Level2A_Safe.PRODUCT_TYPE:
-            rasterArchive = Sentinel2_Level2A_Safe(
-                inputObjectStore, rasterFile.path,
-                getProductBands(request, rasterFile.type),
-                request.targetResolution,
-                timestamp, TMP_DIR)
-        elif rasterFile.type == Sentinel2_Level2A_Theia.PRODUCT_TYPE:
-            rasterArchive = Sentinel2_Level2A_Theia(
-                inputObjectStore, rasterFile.path,
-                getProductBands(request, rasterFile.type),
-                request.targetResolution,
-                timestamp, TMP_DIR)
-        elif rasterFile.type == Sentinel1_Theia.PRODUCT_TYPE:
-            rasterArchive = Sentinel1_Theia(
-                inputObjectStore, rasterFile.path,
-                getProductBands(request, rasterFile.type),
-                request.targetResolution,
-                timestamp, TMP_DIR)
-        else:
-            raise DownloadError(
-                f"Archive type '{rasterFile.type}' not accepted")
+        rasterArchive = getRasterDriver(rasterFile.type)(
+            inputObjectStore, rasterFile.path,
+            getProductBands(request, rasterFile.type),
+            request.targetResolution,
+            timestamp, TMP_DIR)
 
         api.logger.info(f"[group-{groupIdx}:file-{fileIdx}] Building ZARR")
         # Build the zarr dataset and add it to its group's list

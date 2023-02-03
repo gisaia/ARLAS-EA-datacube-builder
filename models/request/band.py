@@ -21,6 +21,16 @@ BAND_MODEL = Model(
             readonly=True,
             description="An optional expression to create the desired band."
         ),
+        "min": fields.Float(
+            required=False,
+            readonly=False,
+            description="A minimum value to clip the band."
+        ),
+        "max": fields.Float(
+            required=False,
+            readonly=False,
+            description="A maximum value to clip the band."
+        ),
         "rgb": fields.String(
             required=False,
             readonly=True,
@@ -45,10 +55,12 @@ BAND_MODEL = Model(
 
 class Band:
 
-    def __init__(self, name, value=None, rgb=None,
-                 cmap=None, description=None):
+    def __init__(self, name, value=None, min=None, max=None,
+                 rgb=None, cmap=None, description=None):
         self.name: str = name
         self.value = value
+        self.min = min
+        self.max = max
         if rgb is not None:
             if rgb == RGB.RED.value:
                 self.rgb = RGB.RED
@@ -75,6 +87,10 @@ class Band:
         band["name"] = self.name
         if self.value:
             band["value"] = self.value
+        if self.min:
+            band["min"] = self.min
+        if self.max:
+            band["max"] = self.max
         if self.rgb:
             band["rgb"] = self.rgb
         if self.cmap:

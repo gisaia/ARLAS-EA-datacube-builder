@@ -236,6 +236,8 @@ def post_cube_build(request: DatacubeBuildRequest):
     for band in request.bands:
         if band.value is not None:
             datacube[band.name] = eval(band.value)
+        if band.min is not None and band.max is not None:
+            datacube[band.name] = datacube[band.name].clip(band.min, band.max)
 
     # Keep just the bands requested
     requestedBands = [band.name for band in request.bands]

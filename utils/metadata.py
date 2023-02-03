@@ -12,15 +12,15 @@ def create_datacube_metadata(request: DatacubeBuildRequest,
     dimensions = {}
     dimensions["x"] = HorizontalSpatialDimension(
         axis="x", description="",
-        extent=[datacube.get("x").values[0],
-                datacube.get("x").values[-1]],
+        extent=[float(datacube.get("x").values[0]),
+                float(datacube.get("x").values[-1])],
         step=xStep, reference_system=request.targetProjection
     )
 
     dimensions["y"] = HorizontalSpatialDimension(
         axis="y", description="",
-        extent=[datacube.get("y").values[0],
-                datacube.get("y").values[-1]],
+        extent=[float(datacube.get("y").values[0]),
+                float(datacube.get("y").values[-1])],
         step=yStep, reference_system=request.targetProjection
     )
 

@@ -196,10 +196,10 @@ def post_cube_build(request: DatacubeBuildRequest):
             # extending the center of the roi
             with xr.open_zarr(groupedDatasets[centerGranuleIdx["group"]][
                         centerGranuleIdx["index"]]) as centerGranuleDs:
-                lonStep = centerGranuleDs.get("x").diff("x").mean() \
-                    .values.tolist()
-                latStep = centerGranuleDs.get("y").diff("y").mean() \
-                    .values.tolist()
+                lonStep = float(centerGranuleDs.get("x").diff("x").mean()
+                                .values.tolist())
+                latStep = float(centerGranuleDs.get("y").diff("y").mean()
+                                .values.tolist())
 
                 lon, lat = completeGrid([roiCentroid.x], [roiCentroid.y],
                                         lonStep, latStep,
@@ -226,6 +226,10 @@ def post_cube_build(request: DatacubeBuildRequest):
         firstDataset = groupedDatasets[list(groupedDatasets.keys())[0]][0]
         with xr.open_zarr(firstDataset) as ds:
             datacube = ds
+            lonStep = float(datacube.get("x").diff("x").mean()
+                            .values.tolist())
+            latStep = float(datacube.get("y").diff("y").mean()
+                            .values.tolist())
     # TODO: merge manually dataset attributes
 
     # Compute the bands requested from the product bands

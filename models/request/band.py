@@ -61,11 +61,10 @@ class Band:
         else:
             self.rgb = None
 
-        if cmap is not None:
-            if cmap not in cm._cmap_registry:
-                raise BadRequest(f"Color map '{cmap}' does not exist " +
-                                 "in matplotlib's color map registry.")
-            self.cmap = cmap
+        self.cmap = cmap
+        if cmap is not None and cmap not in cm._cmap_registry:
+            raise BadRequest(f"Color map '{cmap}' does not exist " +
+                             "in matplotlib's color map registry.")
         self.description = description
 
     def __repr__(self):

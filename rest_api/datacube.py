@@ -27,13 +27,12 @@ from models.response.datacube_build import DATACUBE_BUILD_RESPONSE, \
 from models.errors import BadRequest, DownloadError, \
                           MosaickingError, UploadError, AbstractError
 
-from utils.enums import RGB
 from utils.geometry import completeGrid
 from utils.metadata import create_datacube_metadata
 from utils.objectStore import createInputObjectStore, \
                               getMapperOutputObjectStore, \
                               createOutputObjectStore
-from utils.preview import createPreviewB64
+from utils.preview import createPreviewB64, createPreviewB64Cmap
 from utils.request import getProductBands, getRasterDriver
 from utils.xarray import getBounds, getChunkShape, mergeDatasets
 
@@ -261,15 +260,20 @@ def post_cube_build(request: DatacubeBuildRequest):
         # If all colors have been assigned, use them
         if request.rgb != {}:
             previewBands = request.rgb
+            preview = createPreviewB64(datacube, previewBands,
+                                       f'{zarrRootPath}.png')
         # Else use the first band of the datacube
         else:
-            firstBand: str = list(datacube.data_vars.keys())[0]
-            previewBands = {RGB.RED: firstBand,
-                            RGB.GREEN: firstBand,
-                            RGB.BLUE: firstBand}
+            previewBand: str = list(datacube.data_vars.keys())[0]
+            cmap = "rainbow"
+            for band in request.bands:
+                if band.cmap is not None:
+                    previewBand = band.name
+                    cmap = band.cmap
+                    break
+            preview = createPreviewB64Cmap(datacube, previewBand,
+                                           f'{zarrRootPath}.png', cmap)
 
-        preview = createPreviewB64(datacube, previewBands,
-                                   f'{zarrRootPath}.png')
         client = createOutputObjectStore().client
 
         with so.open(f"{datacubeUrl}.png", "wb",
@@ -282,10 +286,11 @@ def post_cube_build(request: DatacubeBuildRequest):
 
     # Clean up the files created
     del datacube
-    if os.path.exists(zarrRootPath) and os.path.isdir(zarrRootPath):
+    if path.exists(zarrRootPath) and path.isdir(zarrRootPath):
         shutil.rmtree(zarrRootPath)
     os.remove(f'{zarrRootPath}.png')
-    os.remove(f'{zarrRootPath}.png.aux.xml')
+    if path.exists(f'{zarrRootPath}.png.aux.xml'):
+        os.remove(f'{zarrRootPath}.png.aux.xml')
 
     return DatacubeBuildResponse(
         datacubeUrl, f"{datacubeUrl}.png", preview)

@@ -16,3 +16,5 @@ scipy==1.8.1
 gcsfs
 dask
 mr4mp==2.6.2
+Pillow==9.0.1
+matplotlib==3.5.2

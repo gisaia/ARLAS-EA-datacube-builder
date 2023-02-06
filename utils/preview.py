@@ -4,10 +4,12 @@ import base64
 import rioxarray
 from typing import Dict
 
-from PIL import Image
+from PIL import Image, ImageFont, ImageDraw
 from matplotlib import cm
 
 from utils.enums import RGB
+
+FONT = "./configs/Roboto-Light.ttf"
 
 
 def _bandTo256(dataset: xr.Dataset, band: str, xfactor, yfactor, timeSlice):
@@ -89,3 +91,22 @@ def createPreviewB64Cmap(dataset: xr.Dataset, preview: Dict[str, str],
         base64Image = base64.b64encode(fb.read()).decode('utf-8')
 
     return base64Image
+
+
+def addTextOnWhiteBand(imgPath: str, text: str):
+    img = Image.open(imgPath)
+    font = ImageFont.truetype(FONT)
+
+    # Add white band to the 256x256 preview
+    img_band = Image.new("RGB", (256, 276), "White")
+    img_band.paste(img)
+
+    # Create an editable object of the image
+    img_edit = ImageDraw.Draw(img_band)
+
+    # Add centered text in the white band
+    text_pos = ((256 - font.getsize(text)[0]) / 2,
+                256 + (20 - font.getsize(text)[1]) / 2)
+    img_edit.text(text_pos, text, (0, 0, 0), font=font)
+
+    img_band.save(imgPath)

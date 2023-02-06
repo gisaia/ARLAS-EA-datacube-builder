@@ -67,6 +67,7 @@ class DatacubeMetadata:
     dimensions: Dict[str, Dimension] = field()
     variables: Dict[str, Variable] = field()
     composition: Dict[int, List[str]] = field()
+    preview: Dict[str, str] = field()
 
     def as_dict(self):
         metadata = {}
@@ -75,5 +76,6 @@ class DatacubeMetadata:
         metadata["variables"] = {
             k: v.as_dict() for k, v in self.variables.items()}
         metadata["composition"] = self.composition
+        metadata["preview"] = self.preview
 
         return metadata

@@ -64,11 +64,11 @@ def createPreviewB64(dataset: xr.Dataset, bands: Dict[RGB, str],
     return base64Image
 
 
-def createPreviewB64Cmap(dataset: xr.Dataset, band: str,
-                         previewPath: str, cmap: str = "rainbow",
-                         timeSlice=None):
+def createPreviewB64Cmap(dataset: xr.Dataset, preview: Dict[str, str],
+                         previewPath: str, timeSlice=None):
     if timeSlice is None:
         timeSlice = dataset.t.values[-1]
+    cmap, band = list(preview.items())[0]
     # We want a 256x256 pic
     xfactor = len(dataset.x) // 256
     yfactor = len(dataset.y) // 256
@@ -78,7 +78,8 @@ def createPreviewB64Cmap(dataset: xr.Dataset, band: str,
     # Cut the x and y to have 256x256
     xlen = data.shape[0]
     ylen = data.shape[0]
-    data = data[int((xlen-256)/2):int((xlen+256)/2), int((ylen-256)/2):int((ylen+256)/2)]
+    data = data[int((xlen-256)/2):int((xlen+256)/2),
+                int((ylen-256)/2):int((ylen+256)/2)]
 
     img = Image.fromarray(cm.get_cmap(cmap)(data, bytes=True))
     img.save(previewPath)

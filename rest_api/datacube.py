@@ -265,22 +265,12 @@ def post_cube_build(request: DatacubeBuildRequest):
 
     api.logger.info("Uploading preview to Object Store")
     try:
-        # If all colors have been assigned, use them
-        if request.rgb != {}:
-            previewBands = request.rgb
-            preview = createPreviewB64(datacube, previewBands,
+        if len(datacube.attrs["preview"]) == 3:
+            preview = createPreviewB64(datacube, request.rgb,
                                        f'{zarrRootPath}.png')
-        # Else use the first band of the datacube
         else:
-            previewBand: str = list(datacube.data_vars.keys())[0]
-            cmap = "rainbow"
-            for band in request.bands:
-                if band.cmap is not None:
-                    previewBand = band.name
-                    cmap = band.cmap
-                    break
-            preview = createPreviewB64Cmap(datacube, previewBand,
-                                           f'{zarrRootPath}.png', cmap)
+            preview = createPreviewB64Cmap(datacube, datacube.attrs["preview"],
+                                           f'{zarrRootPath}.png')
 
         client = createOutputObjectStore().client
 

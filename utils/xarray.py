@@ -152,6 +152,8 @@ def _mosaicking(firstDataset: xr.Dataset,
         intersection = _mosaicking(firstDSIntersection, secondDSIntersection)
         right = firstDataset.where(
             firstDataset.x > secondBounds[2], drop=True)
+        if len(left.x) == 0:
+            return xr.concat([intersection, right], dim="x")
         return xr.concat([left, intersection, right], dim="x")
 
     if IntersectionType.BOTTOM in intersectTypes:
@@ -164,6 +166,8 @@ def _mosaicking(firstDataset: xr.Dataset,
         intersection = _mosaicking(firstDSIntersection, secondDSIntersection)
         top = firstDataset.where(
             firstDataset.y > secondBounds[3], drop=True)
+        if len(bottom.y) == 0:
+            return xr.concat([intersection, top], dim="y")
         return xr.concat([bottom, intersection, top], dim="y")
 
     if IntersectionType.RIGHT in intersectTypes:
@@ -176,6 +180,8 @@ def _mosaicking(firstDataset: xr.Dataset,
         intersection = _mosaicking(firstDSIntersection, secondDSIntersection)
         right = secondDataset.where(
             secondDataset.x > firstBounds[2], drop=True)
+        if len(right.x) == 0:
+            return xr.concat([left, intersection], dim="x")
         return xr.concat([left, intersection, right], dim="x")
 
     if IntersectionType.TOP in intersectTypes:
@@ -188,4 +194,6 @@ def _mosaicking(firstDataset: xr.Dataset,
         intersection = _mosaicking(firstDSIntersection, secondDSIntersection)
         top = secondDataset.where(
             secondDataset.y > firstBounds[3], drop=True)
+        if len(top.y) == 0:
+            return xr.concat([bottom, intersection], dim="y")
         return xr.concat([bottom, intersection, top], dim="y")

@@ -89,13 +89,6 @@ def mergeDatasets(firstDataset: xr.Dataset,
     if secondDataset is None:
         return firstDataset
 
-    intersectTypes = intersect(firstDataset, secondDataset)
-
-    # If no intersections, auto-magically combine
-    if len(intersectTypes) == 0:
-        return xr.combine_by_coords(
-            (firstDataset, secondDataset), combine_attrs="override")
-
     # It is only possible to concatenate datasets that contain the same bands
     common_bands = []
     for band in firstDataset.data_vars.keys():
@@ -117,13 +110,19 @@ def mergeDatasets(firstDataset: xr.Dataset,
     commonSecondDS = secondDataset[common_bands]
 
     return xr.merge(
-        (_mosaicking(commonFirstDS, commonSecondDS, intersectTypes),
+        (_mosaicking(commonFirstDS, commonSecondDS),
          restFirstDS, restSecondDS), combine_attrs="override")
 
 
 def _mosaicking(firstDataset: xr.Dataset,
-                secondDataset: xr.Dataset,
-                intersectTypes: List[IntersectionType]) -> xr.Dataset:
+                secondDataset: xr.Dataset) -> xr.Dataset:
+
+    intersectTypes = intersect(firstDataset, secondDataset)
+
+    # If no intersections, auto-magically combine
+    if len(intersectTypes) == 0:
+        return xr.combine_by_coords(
+            (firstDataset, secondDataset), combine_attrs="override")
 
     # If they represent the same extent of data, merge based on criterion
     if IntersectionType.SAME in intersectTypes:
@@ -150,7 +149,7 @@ def _mosaicking(firstDataset: xr.Dataset,
             firstDataset.x <= secondBounds[2], drop=True)
         secondDSIntersection = secondDataset.where(
             secondDataset.x >= firstBounds[0], drop=True)
-        intersection = mergeDatasets(firstDSIntersection, secondDSIntersection)
+        intersection = _mosaicking(firstDSIntersection, secondDSIntersection)
         right = firstDataset.where(
             firstDataset.x > secondBounds[2], drop=True)
         return xr.concat([left, intersection, right], dim="x")
@@ -162,7 +161,7 @@ def _mosaicking(firstDataset: xr.Dataset,
             firstDataset.y <= secondBounds[3], drop=True)
         secondDSIntersection = secondDataset.where(
             secondDataset.y >= firstBounds[1], drop=True)
-        intersection = mergeDatasets(firstDSIntersection, secondDSIntersection)
+        intersection = _mosaicking(firstDSIntersection, secondDSIntersection)
         top = firstDataset.where(
             firstDataset.y > secondBounds[3], drop=True)
         return xr.concat([bottom, intersection, top], dim="y")
@@ -174,7 +173,7 @@ def _mosaicking(firstDataset: xr.Dataset,
             firstDataset.x >= secondBounds[0], drop=True)
         secondDSIntersection = secondDataset.where(
             secondDataset.x <= firstBounds[2], drop=True)
-        intersection = mergeDatasets(firstDSIntersection, secondDSIntersection)
+        intersection = _mosaicking(firstDSIntersection, secondDSIntersection)
         right = secondDataset.where(
             secondDataset.x > firstBounds[2], drop=True)
         return xr.concat([left, intersection, right], dim="x")
@@ -186,7 +185,7 @@ def _mosaicking(firstDataset: xr.Dataset,
             firstDataset.y >= secondBounds[1], drop=True)
         secondDSIntersection = secondDataset.where(
             secondDataset.y <= firstBounds[3], drop=True)
-        intersection = mergeDatasets(firstDSIntersection, secondDSIntersection)
+        intersection = _mosaicking(firstDSIntersection, secondDSIntersection)
         top = secondDataset.where(
             secondDataset.y > firstBounds[3], drop=True)
         return xr.concat([bottom, intersection, top], dim="y")

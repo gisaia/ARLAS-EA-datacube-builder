@@ -27,6 +27,7 @@ from models.response.datacube_build import DATACUBE_BUILD_RESPONSE, \
 from models.errors import BadRequest, DownloadError, \
                           MosaickingError, UploadError, AbstractError
 
+from utils.enums import ChunkingStrategy as CStrat
 from utils.geometry import completeGrid
 from utils.metadata import create_datacube_metadata
 from utils.objectStore import createInputObjectStore, \
@@ -126,13 +127,14 @@ def mosaicking(merge_input) -> xr.Dataset:
             granuleGrid["x"], granuleGrid["y"] = completeGrid(
                 granuleGrid["x"], granuleGrid["y"],
                 lonStep, latStep, bounds)
+            dims = {
+                "x": len(granuleGrid["x"]), "y": len(granuleGrid["y"]), "t": 1}
 
             mergedDataset = mergeDatasets(
                 mergedDataset,
                 dataset.interp_like(
-                    xr.Dataset(granuleGrid),
-                    method="nearest"
-                )
+                    xr.Dataset(granuleGrid), method="nearest")
+                .chunk(getChunkShape(dims, CStrat.SPINACH))
             )
 
     return mergedDataset

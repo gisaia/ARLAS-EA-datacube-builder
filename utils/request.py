@@ -8,7 +8,8 @@ from models.rasterDrivers import AbstractRasterArchive, \
                                  Sentinel2_Level2A_Safe, \
                                  Sentinel2_Level2A_Theia, \
                                  Sentinel1_Theia, \
-                                 Sentinel1_Level1_Safe
+                                 Sentinel1_Level1_Safe, \
+                                 TheiaSnow
 
 
 def getProductBands(request: DatacubeBuildRequest,
@@ -58,6 +59,8 @@ def getRasterDriver(rasterProductType) -> Type[AbstractRasterArchive]:
         return Sentinel1_Theia
     elif rasterProductType == Sentinel1_Level1_Safe.PRODUCT_TYPE:
         return Sentinel1_Level1_Safe
+    elif rasterProductType == TheiaSnow.PRODUCT_TYPE:
+        return TheiaSnow
     else:
         raise BadRequest(
             f"Archive type '{rasterProductType}' does not have a driver")

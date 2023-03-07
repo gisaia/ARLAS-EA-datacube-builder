@@ -4,10 +4,12 @@ import base64
 import rioxarray
 from typing import Dict
 
-from PIL import Image
+from PIL import Image, ImageFont, ImageDraw
 from matplotlib import cm
 
 from utils.enums import RGB
+
+FONT = "./configs/Roboto-Light.ttf"
 
 
 def _bandTo256(dataset: xr.Dataset, band: str, xfactor, yfactor, timeSlice):
@@ -64,11 +66,11 @@ def createPreviewB64(dataset: xr.Dataset, bands: Dict[RGB, str],
     return base64Image
 
 
-def createPreviewB64Cmap(dataset: xr.Dataset, band: str,
-                         previewPath: str, cmap: str = "rainbow",
-                         timeSlice=None):
+def createPreviewB64Cmap(dataset: xr.Dataset, preview: Dict[str, str],
+                         previewPath: str, timeSlice=None):
     if timeSlice is None:
         timeSlice = dataset.t.values[-1]
+    cmap, band = list(preview.items())[0]
     # We want a 256x256 pic
     xfactor = len(dataset.x) // 256
     yfactor = len(dataset.y) // 256
@@ -78,7 +80,8 @@ def createPreviewB64Cmap(dataset: xr.Dataset, band: str,
     # Cut the x and y to have 256x256
     xlen = data.shape[0]
     ylen = data.shape[0]
-    data = data[int((xlen-256)/2):int((xlen+256)/2), int((ylen-256)/2):int((ylen+256)/2)]
+    data = data[int((xlen-256)/2):int((xlen+256)/2),
+                int((ylen-256)/2):int((ylen+256)/2)]
 
     img = Image.fromarray(cm.get_cmap(cmap)(data, bytes=True))
     img.save(previewPath)
@@ -88,3 +91,22 @@ def createPreviewB64Cmap(dataset: xr.Dataset, band: str,
         base64Image = base64.b64encode(fb.read()).decode('utf-8')
 
     return base64Image
+
+
+def addTextOnWhiteBand(imgPath: str, text: str):
+    img = Image.open(imgPath)
+    font = ImageFont.truetype(FONT)
+
+    # Add white band to the 256x256 preview
+    img_band = Image.new("RGB", (256, 276), "White")
+    img_band.paste(img)
+
+    # Create an editable object of the image
+    img_edit = ImageDraw.Draw(img_band)
+
+    # Add centered text in the white band
+    text_pos = ((256 - font.getsize(text)[0]) / 2,
+                256 + (20 - font.getsize(text)[1]) / 2)
+    img_edit.text(text_pos, text, (0, 0, 0), font=font)
+
+    img_band.save(imgPath)

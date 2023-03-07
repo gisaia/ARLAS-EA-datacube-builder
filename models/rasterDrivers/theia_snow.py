@@ -14,15 +14,15 @@ from models.errors import DownloadError
 
 from .abstractRasterArchive import AbstractRasterArchive
 
-PRODUCT_START_TIME = "metadataSection/metadataObject/metadataWrap/xmlData/" + \
-    "safe:acquisitionPeriod/safe:startTime"
-PRODUCT_STOP_TIME = "metadataSection/metadataObject/metadataWrap/xmlData/" + \
-    "safe:acquisitionPeriod/safe:stopTime"
+PRODUCT_TIME = "Product_Characteristics/" + \
+    "UTC_Acquisition_Range/MEAN"
+
+RESOLUTION = 20  # m
 
 
-class Sentinel1_Level1_Safe(AbstractRasterArchive):
-    PRODUCT_TYPE = RasterProductType(source="Sentinel1",
-                                     format="L1-SAFE")
+class TheiaSnow(AbstractRasterArchive):
+    PRODUCT_TYPE = RasterProductType(source="Theia",
+                                     format="Snow")
 
     def __init__(self, objectStore: AbstractObjectStore, rasterURI: str,
                  bands: Dict[str, str], targetResolution: int,
@@ -35,13 +35,11 @@ class Sentinel1_Level1_Safe(AbstractRasterArchive):
 
     def _checkBands(self, bands: Dict[str, str]):
         for band in bands.values():
-            if band == "grd-hh":
+            if band == "SCD":
                 continue
-            elif band == "grd-hv":
+            elif band == "SMD":
                 continue
-            elif band == "grd-vh":
-                continue
-            elif band == "grd-vv":
+            elif band == "SOD":
                 continue
             else:
                 raise DownloadError(f"Band '{band}' not found")
@@ -58,29 +56,22 @@ class Sentinel1_Level1_Safe(AbstractRasterArchive):
                 listOfFileNames = rasterZip.namelist()
                 # Extract timestamp of production of the product
                 for fileName in listOfFileNames:
-                    if re.match(r".*/manifest\.safe", fileName):
+                    if re.match(r".*/.*\_ALL\.xml", fileName):
                         if not path.exists(zipExtractPath + fileName):
                             rasterZip.extract(fileName, zipExtractPath)
                         rasterZip.extract(fileName, zipExtractPath)
                         metadata: etree._ElementTree = etree.parse(
                             zipExtractPath + fileName)
                         root: etree._Element = metadata.getroot()
-                        startTime = parser.parse(root.xpath(
-                            PRODUCT_START_TIME, namespaces=root.nsmap)[0].text)
 
-                        endTime = parser.parse(root.xpath(
-                            PRODUCT_STOP_TIME, namespaces=root.nsmap)[0].text)
-
-                        self.productTime = int(
-                            (datetime.timestamp(startTime)
-                             + datetime.timestamp(endTime)) / 2)
+                        self.productTime = int(datetime.timestamp(parser.parse(
+                            root.xpath(PRODUCT_TIME,
+                                       namespaces=root.nsmap)[0].text)))
                         break
 
                 for datacubeBand, productBand in bands.items():
                     for fileName in listOfFileNames:
-                        if re.match(rf".*/measurement/.*{productBand}.*\.tiff",
-                                    fileName):
-
+                        if re.match(rf".*/.*{productBand}_R2.tif", fileName):
                             if not path.exists(zipExtractPath + fileName):
                                 rasterZip.extract(fileName, zipExtractPath)
 
@@ -88,5 +79,5 @@ class Sentinel1_Level1_Safe(AbstractRasterArchive):
                                 zipExtractPath, fileName)
 
                 if len(bands) != len(self.bandsToExtract):
-                    raise DownloadError("Some of the required files " +
+                    raise DownloadError("Some of the required bands " +
                                         "were not found")

@@ -5,10 +5,14 @@ from models.request.datacube_build import DatacubeBuildRequest
 from models.metadata import HorizontalSpatialDimension, \
                             TemporalDimension, Variable, \
                             DatacubeMetadata
+from utils.enums import RGB
 
 
 def create_datacube_metadata(request: DatacubeBuildRequest,
                              datacube: xr.Dataset, xStep, yStep):
+    # Remove metdata created during datacube creation
+    datacube.attrs = {}
+
     dimensions = {}
     dimensions["x"] = HorizontalSpatialDimension(
         axis="x", description="",
@@ -48,5 +52,18 @@ def create_datacube_metadata(request: DatacubeBuildRequest,
         composition[rasterGroup.timestamp] = [
             f.id for f in rasterGroup.rasters]
 
-    metadata = DatacubeMetadata(dimensions, variables, composition)
+    # If all colors have been assigned, use them for the preview
+    if request.rgb != {}:
+        preview = {"RED": request.rgb[RGB.RED],
+                   "GREEN": request.rgb[RGB.GREEN],
+                   "BLUE": request.rgb[RGB.BLUE]}
+    # Else use the first band of the datacube with a cmap or default cmap
+    else:
+        preview = {"rainbow": list(datacube.data_vars.keys())[0]}
+        for band in request.bands:
+            if band.cmap is not None:
+                preview = {band.cmap: band.name}
+                break
+
+    metadata = DatacubeMetadata(dimensions, variables, composition, preview)
     return datacube.assign_attrs(metadata.as_dict())

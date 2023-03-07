@@ -27,6 +27,7 @@ from models.response.datacube_build import DATACUBE_BUILD_RESPONSE, \
 from models.errors import BadRequest, DownloadError, \
                           MosaickingError, UploadError, AbstractError
 
+from utils.enums import ChunkingStrategy as CStrat
 from utils.geometry import completeGrid
 from utils.metadata import create_datacube_metadata
 from utils.objectStore import createInputObjectStore, \
@@ -126,13 +127,14 @@ def mosaicking(merge_input) -> xr.Dataset:
             granuleGrid["x"], granuleGrid["y"] = completeGrid(
                 granuleGrid["x"], granuleGrid["y"],
                 lonStep, latStep, bounds)
+            dims = {
+                "x": len(granuleGrid["x"]), "y": len(granuleGrid["y"]), "t": 1}
 
             mergedDataset = mergeDatasets(
                 mergedDataset,
                 dataset.interp_like(
-                    xr.Dataset(granuleGrid),
-                    method="nearest"
-                )
+                    xr.Dataset(granuleGrid), method="nearest")
+                .chunk(getChunkShape(dims, CStrat.SPINACH))
             )
 
     return mergedDataset
@@ -263,22 +265,12 @@ def post_cube_build(request: DatacubeBuildRequest):
 
     api.logger.info("Uploading preview to Object Store")
     try:
-        # If all colors have been assigned, use them
-        if request.rgb != {}:
-            previewBands = request.rgb
-            preview = createPreviewB64(datacube, previewBands,
+        if len(datacube.attrs["preview"]) == 3:
+            preview = createPreviewB64(datacube, request.rgb,
                                        f'{zarrRootPath}.png')
-        # Else use the first band of the datacube
         else:
-            previewBand: str = list(datacube.data_vars.keys())[0]
-            cmap = "rainbow"
-            for band in request.bands:
-                if band.cmap is not None:
-                    previewBand = band.name
-                    cmap = band.cmap
-                    break
-            preview = createPreviewB64Cmap(datacube, previewBand,
-                                           f'{zarrRootPath}.png', cmap)
+            preview = createPreviewB64Cmap(datacube, datacube.attrs["preview"],
+                                           f'{zarrRootPath}.png')
 
         client = createOutputObjectStore().client
 

@@ -34,7 +34,7 @@ from utils.objectStore import createInputObjectStore, \
                               getMapperOutputObjectStore, \
                               createOutputObjectStore
 from utils.preview import createPreviewB64, createPreviewB64Cmap
-from utils.request import getProductBands, getRasterDriver
+from utils.request import getProductBands, getRasterDriver, getEvalFormula
 from utils.xarray import getBounds, getChunkShape, mergeDatasets
 
 from urllib.parse import urlparse
@@ -236,8 +236,7 @@ def post_cube_build(request: DatacubeBuildRequest):
 
     # Compute the bands requested from the product bands
     for band in request.bands:
-        if band.value is not None:
-            datacube[band.name] = eval(band.value)
+        datacube[band.name] = eval(getEvalFormula(band.value, request.aliases))
         if band.min is not None and band.max is not None:
             datacube[band.name] = datacube[band.name].clip(band.min, band.max)
 
@@ -305,7 +304,7 @@ class DataCube_Build(Resource):
         try:
             request = DatacubeBuildRequest(**api.payload)
         except Exception as e:
-            raise BadRequest(e.args[0])
+            raise BadRequest(e.args)
 
         with concurrent.futures.ProcessPoolExecutor() as executor:
             f = executor.submit(post_cube_build, request)

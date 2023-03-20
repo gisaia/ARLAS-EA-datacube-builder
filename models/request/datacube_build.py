@@ -107,14 +107,6 @@ class DatacubeBuildRequest:
                     raise BadRequest(
                         f"Too many bands given for color {band.rgb.value}")
                 self.rgb[band.rgb] = band.name
-            # If no value is given,
-            # then the band name needs to include an alias
-            if band.value is None:
-                if len(band.name.split(".", 1)) == 1:
-                    raise BadRequest(f"Band '{band.name}' needs to indicate " +
-                                     "the type of product it is linked to, " +
-                                     f"by writing it as 'alias.{band.name}'." +
-                                     " 'alias' is an alias to a product type.")
 
         if self.rgb != {} and len(self.rgb.keys()) != 3:
             raise BadRequest("The request should contain no bands with " +

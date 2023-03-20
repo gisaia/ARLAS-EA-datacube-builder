@@ -9,7 +9,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
                         "format": "Snow",
                         "source": "Theia"
                     },
-                    "path": "gs://gisaia-arlasea/MULTISAT_20170901-000000-000_L3B-SNOW_T30TXN_D.zip",
+                    "path": "gs://gisaia-arlasea/MULTISAT_20170901-000000-000_L3B-SNOW_T30TXN_D",
                     "id": "snowCoverage2017_T30TXN"
                 },
                 {
@@ -17,7 +17,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
                         "format": "Snow",
                         "source": "Theia"
                     },
-                    "path": "gs://gisaia-arlasea/MULTISAT_20170901-000000-000_L3B-SNOW_T30TYN_D.zip",
+                    "path": "gs://gisaia-arlasea/MULTISAT_20170901-000000-000_L3B-SNOW_T30TYN_D",
                     "id": "snowCoverage2017_T30TYN"
                 }
             ],
@@ -30,7 +30,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
                         "format": "Snow",
                         "source": "Theia"
                     },
-                    "path": "gs://gisaia-arlasea/MULTISAT_20180901-000000-000_L3B-SNOW_T30TXN_D.zip",
+                    "path": "gs://gisaia-arlasea/MULTISAT_20180901-000000-000_L3B-SNOW_T30TXN_D",
                     "id": "snowCoverage2018_T30TXN"
                 },
                 {
@@ -38,7 +38,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
                         "format": "Snow",
                         "source": "Theia"
                     },
-                    "path": "gs://gisaia-arlasea/MULTISAT_20180901-000000-000_L3B-SNOW_T30TYN_D.zip",
+                    "path": "gs://gisaia-arlasea/MULTISAT_20180901-000000-000_L3B-SNOW_T30TYN_D",
                     "id": "snowCoverage2018_T30TYN"
                 }
             ],
@@ -51,7 +51,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
                         "format": "Snow",
                         "source": "Theia"
                     },
-                    "path": "gs://gisaia-arlasea/MULTISAT_20190901-000000-000_L3B-SNOW_T30TXN_D.zip",
+                    "path": "gs://gisaia-arlasea/MULTISAT_20190901-000000-000_L3B-SNOW_T30TXN_D",
                     "id": "snowCoverage2019_T30TXN"
                 },
                 {
@@ -59,7 +59,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
                         "format": "Snow",
                         "source": "Theia"
                     },
-                    "path": "gs://gisaia-arlasea/MULTISAT_20190901-000000-000_L3B-SNOW_T30TYN_D.zip",
+                    "path": "gs://gisaia-arlasea/MULTISAT_20190901-000000-000_L3B-SNOW_T30TYN_D",
                     "id": "snowCoverage2019_T30TYN"
                 }
             ],
@@ -72,7 +72,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
                         "format": "Snow",
                         "source": "Theia"
                     },
-                    "path": "gs://gisaia-arlasea/MULTISAT_20200901-000000-000_L3B-SNOW_T30TXN_D.zip",
+                    "path": "gs://gisaia-arlasea/MULTISAT_20200901-000000-000_L3B-SNOW_T30TXN_D",
                     "id": "snowCoverage2020_T30TXN"
                 },
                 {
@@ -80,7 +80,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
                         "format": "Snow",
                         "source": "Theia"
                     },
-                    "path": "gs://gisaia-arlasea/MULTISAT_20200901-000000-000_L3B-SNOW_T30TYN_D.zip",
+                    "path": "gs://gisaia-arlasea/MULTISAT_20200901-000000-000_L3B-SNOW_T30TYN_D",
                     "id": "snowCoverage2020_T30TYN"
                 }
             ],
@@ -91,7 +91,8 @@ curl -X POST -H "Content-Type: application/json" -d '{
     "roi": "-1.774729,42.329373,0.788877,43.353336",
     "bands": [
         {
-            "name": "Snow.SCD",
+            "name": "SCD",
+            "value": "Snow.SCD / 365",
             "description": "Snow Coverage Duration"
         }
     ],

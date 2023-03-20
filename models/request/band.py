@@ -11,15 +11,15 @@ BAND_MODEL = Model(
         "name": fields.String(
             required=True,
             readonly=True,
-            description="The name of the band requested. Can be a band " +
-                        "of the data (ie 'B05', 'B12') or a new band to " +
-                        "integrate in the data cube (ie renaming a band," +
-                        " or creating a composite one)."
+            description="Name of the band requested"
         ),
         "value": fields.String(
-            required=False,
+            required=True,
             readonly=True,
-            description="An optional expression to create the desired band."
+            description="Expression to create the desired band. " +
+                        "Can be a band of the data prefaced by its alias " +
+                        "(ie 'S2.B05', 'S2.B12') or an operation on the " +
+                        "bands (ie 'S2.B5 + S2.B8')."
         ),
         "min": fields.Float(
             required=False,

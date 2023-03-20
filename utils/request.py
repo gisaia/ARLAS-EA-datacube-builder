@@ -1,4 +1,4 @@
-from typing import Dict, Type
+from typing import Dict, List, Type, Match
 import re
 
 from models.request.datacube_build import DatacubeBuildRequest
@@ -19,35 +19,35 @@ def getProductBands(request: DatacubeBuildRequest,
     (datacube name, band name) as (key, value)
     """
     # Extract from the request which bands are required
+    aliasProduct = ""
     for k, v in request.aliases.items():
         if v == productType:
             aliasProduct = k
             break
+    if aliasProduct == "":
+        raise Exception("No alias given for this product type")
+
     productBands = {}
     for band in request.bands:
-        # If no value, the name must be 'alias.band'
-        if band.value is None:
-            alias, band_name = band.name.split(".", 1)
-            if alias == aliasProduct:
-                productBands[band.name] = band_name
-        # If a value is given we need to extract the bands required
-        # from the expression
-        else:
-            match = re.findall(r'datacube\[[\'|\"](.*?)[\'|\"]\]',
-                               band.value)
-            for m in match:
-                alias, band_name = band.name.split(".", 1)
-                if alias == aliasProduct:
-                    productBands[m] = band_name
-
-            match = re.findall(r'datacube\.get\([\'|\"](.*?)[\'|\"]\)',
-                               band.value)
-            for m in match:
-                alias, band_name = band.name.split(".", 1)
-                if alias == aliasProduct:
-                    productBands[m] = band_name
+        # Extract the bands required from the expression
+        match = re.findall(rf'{aliasProduct}\.([a-zA-Z0-9]*)',
+                           band.value)
+        for m in match:
+            productBands[f'{aliasProduct}.{m}'] = m
 
     return productBands
+
+
+def getEvalFormula(bandValue: str, aliases: Dict[str, List[str]]) -> str:
+    def repl(match: Match[str]) -> str:
+        for m in match.groups():
+            return f"datacube.get('{m}')"
+
+    result = bandValue
+    for alias in aliases.keys():
+        result = re.sub(rf"({alias}\.[a-zA-Z0-9]*)", repl, result)
+
+    return result
 
 
 def getRasterDriver(rasterProductType) -> Type[AbstractRasterArchive]:

@@ -17,7 +17,7 @@ def roi2geometry(roi: str):
     # If contains'(' is a WKT
     if re.match(r".*\(.*", roi):
         try:
-            polygon = loads(roi)
+            polygon = Polygon(loads(roi).coords)
         except Exception:
             raise ValueError("The ROI is not formatted correctly")
         if polygon.geom_type != "Polygon":

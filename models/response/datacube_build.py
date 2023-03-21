@@ -1,21 +1,13 @@
-from flask_restx import Model, fields
-from dataclasses import dataclass
+from typing import Annotated
+from fastapi import Query
+from pydantic import BaseModel
 
-DATACUBE_BUILD_RESPONSE = Model(
-    "DatacubeBuildResponse",
-    {
-        "datacubeURL": fields.String(
-            description="The URL at which the datacube is created"),
-        "previewURL": fields.String(
-            description="The URL at which the datacube's preview is created"),
-        "preview": fields.String(
-            description="The preview of the datacube encoded in base64")
-    }
-)
+DC_URL_DESCRIPTION = "URL at which the datacube is created"
+PREVIEW_URL_DESCRIPTION = "URL at which the datacube's preview is created"
+PREVIEW_DESCRIPTION = "The preview of the datacube encoded in base64"
 
 
-@dataclass
-class DatacubeBuildResponse:
-    datacubeURL: str
-    previewURL: str
-    preview: str
+class DatacubeBuildResponse(BaseModel):
+    datacubeURL: Annotated[str, Query(description=DC_URL_DESCRIPTION)]
+    previewURL: Annotated[str, Query(description=PREVIEW_URL_DESCRIPTION)]
+    preview: Annotated[str, Query(description=PREVIEW_DESCRIPTION)]

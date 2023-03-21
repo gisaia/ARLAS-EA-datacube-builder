@@ -1,44 +1,16 @@
-from flask_restx import Model, fields
+from typing import Annotated
+from fastapi import Query
+from pydantic import BaseModel
 
-from .rasterProductType import RASTERPRODUCTTYPE_MODEL, RasterProductType
+from .rasterProductType import RasterProductType
 
-RASTERFILE_MODEL = Model(
-    "RasterFile",
-    {
-        "type": fields.Nested(
-            RASTERPRODUCTTYPE_MODEL,
-            required=True,
-            readonly=True
-        ),
-        "path": fields.String(
-            required=True,
-            readonly=True,
-            description="The path to the raster file."
-        ),
-        "id": fields.String(
-            required=True,
-            readonly=True,
-            description="Identifier for the raster file," +
-                        "used for the traceability of the datacube."
-        )
-    }
-)
+TYPE_DESCRIPTION = "The type of the raster file."
+PATH_DESCRIPTION = "The path to the raster file."
+ID_DESCRIPTION = "Identifier for the raster file, " + \
+    "used for the traceability of the datacube."
 
 
-class RasterFile:
-
-    def __init__(self, type, path, id):
-        self.type = RasterProductType(**type)
-        self.path: str = path
-        self.id: str = id
-
-    def __repr__(self):
-        return str(self.as_dict())
-
-    def as_dict(self):
-        rasterFile = {}
-        rasterFile["type"] = self.type.as_dict()
-        rasterFile["path"] = self.path
-        rasterFile["id"] = self.id
-
-        return rasterFile
+class RasterFile(BaseModel):
+    type: Annotated[RasterProductType, Query(description=TYPE_DESCRIPTION)]
+    path: Annotated[str, Query(description=PATH_DESCRIPTION)]
+    id: Annotated[str, Query(description=ID_DESCRIPTION)]

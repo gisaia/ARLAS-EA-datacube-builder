@@ -1,7 +1,7 @@
 from typing import Dict, List, Type, Match
 import re
 
-from models.request.datacube_build import DatacubeBuildRequest
+from models.request.cubeBuild import CubeBuildRequest
 from models.request.rasterProductType import RasterProductType
 from models.errors import BadRequest
 from models.rasterDrivers import AbstractRasterArchive, \
@@ -12,7 +12,7 @@ from models.rasterDrivers import AbstractRasterArchive, \
                                  TheiaSnow
 
 
-def getProductBands(request: DatacubeBuildRequest,
+def getProductBands(request: CubeBuildRequest,
                     productType: RasterProductType) -> Dict[str, str]:
     """
     Based on the request, creates a dictionnary with the pair
@@ -25,7 +25,7 @@ def getProductBands(request: DatacubeBuildRequest,
             aliasProduct = k
             break
     if aliasProduct == "":
-        raise Exception("No alias given for this product type")
+        raise Exception(f"No alias given for product type {productType}")
 
     productBands = {}
     for band in request.bands:

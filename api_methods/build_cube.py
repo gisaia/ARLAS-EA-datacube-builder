@@ -3,28 +3,21 @@ from typing import List, Dict, Tuple
 import traceback
 
 import base64
+from logging import Logger
 import os
 import os.path as path
 import shutil
 import numpy as np
 import xarray as xr
-from flask_restx import Namespace, Resource
 from shapely.geometry import Point
 import smart_open as so
 import mr4mp
-from http import HTTPStatus
 import concurrent.futures
 
-from models.request.datacube_build \
-    import DATACUBE_BUILD_REQUEST, DatacubeBuildRequest
-from models.request.rasterGroup import RASTERGROUP_MODEL
-from models.request.band import BAND_MODEL
-from models.request.rasterFile import RASTERFILE_MODEL
-from models.request.rasterProductType import RASTERPRODUCTTYPE_MODEL
+from models.request.cubeBuild import TransformedCubeBuildRequest
 
-from models.response.datacube_build import DATACUBE_BUILD_RESPONSE, \
-                                           DatacubeBuildResponse
-from models.errors import BadRequest, DownloadError, \
+from models.response.datacube_build import DatacubeBuildResponse
+from models.errors import DownloadError, \
                           MosaickingError, UploadError, AbstractError
 
 from utils.enums import ChunkingStrategy as CStrat
@@ -39,28 +32,19 @@ from utils.xarray import getBounds, getChunkShape, mergeDatasets
 
 from urllib.parse import urlparse
 
-api = Namespace("cube",
-                description="Build a data cube from raster files")
-api.models[DATACUBE_BUILD_REQUEST.name] = DATACUBE_BUILD_REQUEST
-api.models[RASTERGROUP_MODEL.name] = RASTERGROUP_MODEL
-api.models[BAND_MODEL.name] = BAND_MODEL
-api.models[RASTERFILE_MODEL.name] = RASTERFILE_MODEL
-api.models[RASTERPRODUCTTYPE_MODEL.name] = RASTERPRODUCTTYPE_MODEL
-
-api.models[DATACUBE_BUILD_RESPONSE.name] = DATACUBE_BUILD_RESPONSE
-
 TMP_DIR = "tmp/"
 
 
-def download(download_input: Tuple[DatacubeBuildRequest, int, int]) \
-                -> Dict[float, List[str]]:
+def download(input: Tuple[TransformedCubeBuildRequest, int, int, Logger]) \
+        -> Dict[float, List[str]]:
     """
     Builds a zarr corresponding to the requested bands for
     the raster file 'fileIdx' in the group 'groupIdx'
     """
-    request = download_input[0]
-    groupIdx = download_input[1]
-    fileIdx = download_input[2]
+    request = input[0]
+    groupIdx = input[1]
+    fileIdx = input[2]
+    logger = input[3]
 
     try:
         # Retrieve from the request the important information
@@ -70,7 +54,7 @@ def download(download_input: Tuple[DatacubeBuildRequest, int, int]) \
         inputObjectStore = createInputObjectStore(
                         urlparse(rasterFile.path).scheme)
 
-        api.logger.info(f"[group-{groupIdx}:file-{fileIdx}] Extracting bands")
+        logger.info(f"[group-{groupIdx}:file-{fileIdx}] Extracting bands")
         # Depending on archive type, extract desired data
         rasterArchive = getRasterDriver(rasterFile.type)(
             inputObjectStore, rasterFile.path,
@@ -78,7 +62,7 @@ def download(download_input: Tuple[DatacubeBuildRequest, int, int]) \
             request.targetResolution,
             timestamp, TMP_DIR)
 
-        api.logger.info(f"[group-{groupIdx}:file-{fileIdx}] Building ZARR")
+        logger.info(f"[group-{groupIdx}:file-{fileIdx}] Building ZARR")
         # Build the zarr dataset and add it to its group's list
         zarrRootPath = path.join(TMP_DIR, f"{request.dataCubePath}",
                                  f'{groupIdx}/{fileIdx}')
@@ -88,7 +72,7 @@ def download(download_input: Tuple[DatacubeBuildRequest, int, int]) \
         groupedDatasets: Dict[int, List[str]] = {timestamp: [zarrPath]}
         return groupedDatasets
     except Exception as e:
-        api.logger.error(f"[group-{groupIdx}:file-{fileIdx}]")
+        logger.error(f"[group-{groupIdx}:file-{fileIdx}]")
         traceback.print_exc()
         raise DownloadError(e.args[0])
 
@@ -146,8 +130,8 @@ def merge_mosaicking(mosaick_a: xr.Dataset,
         (mosaick_a, mosaick_b), combine_attrs="override")
 
 
-def post_cube_build(request: DatacubeBuildRequest):
-
+def _build_datacube(request: TransformedCubeBuildRequest,
+                    logger: Logger):
     groupedDatasets: dict[int, List[str]] = {}
 
     centerGranuleIdx = {"group": int, "index": int}
@@ -161,7 +145,7 @@ def post_cube_build(request: DatacubeBuildRequest):
     mapReduceIter = []
     for groupIdx in range(len(request.composition)):
         for idx in range(len(request.composition[groupIdx].rasters)):
-            mapReduceIter.append((request, groupIdx, idx))
+            mapReduceIter.append((request, groupIdx, idx, logger))
 
     # Download parallely the groups of bands of each file
     try:
@@ -189,7 +173,7 @@ def post_cube_build(request: DatacubeBuildRequest):
                 xmax = max(xmax, dsBounds[2])
                 ymax = max(ymax, dsBounds[3])
 
-    api.logger.info("Building datacube from the ZARRs")
+    logger.info("Building datacube from the ZARRs")
     # If there is more than one file requested
     if not (len(request.composition) == 1 and
             len(request.composition[0].rasters) == 1):
@@ -221,7 +205,7 @@ def post_cube_build(request: DatacubeBuildRequest):
                                           iterMosaicking)
 
         except Exception as e:
-            api.logger.error(e)
+            logger.error(e)
             traceback.print_exc()
             return MosaickingError(e.args[0])
     else:
@@ -247,7 +231,7 @@ def post_cube_build(request: DatacubeBuildRequest):
     # Add relevant datacube metadata
     datacube = create_datacube_metadata(request, datacube, lonStep, latStep)
 
-    api.logger.info("Writing datacube to Object Store")
+    logger.info("Writing datacube to Object Store")
     try:
         datacubeUrl, mapper = getMapperOutputObjectStore(
             request.dataCubePath)
@@ -258,11 +242,11 @@ def post_cube_build(request: DatacubeBuildRequest):
             .close()
 
     except Exception as e:
-        api.logger.error(e)
+        logger.error(e)
         traceback.print_exc()
         return UploadError(f"Datacube: {e.args[0]}")
 
-    api.logger.info("Uploading preview to Object Store")
+    logger.info("Uploading preview to Object Store")
     try:
         if len(datacube.attrs["preview"]) == 3:
             preview = createPreviewB64(datacube, request.rgb,
@@ -277,7 +261,7 @@ def post_cube_build(request: DatacubeBuildRequest):
                      transport_params={"client": client}) as fb:
             fb.write(base64.b64decode(preview))
     except Exception as e:
-        api.logger.error(e)
+        logger.error(e)
         traceback.print_exc()
         return UploadError(f"Preview: {e.args[0]}")
 
@@ -290,27 +274,19 @@ def post_cube_build(request: DatacubeBuildRequest):
         os.remove(f'{zarrRootPath}.png.aux.xml')
 
     return DatacubeBuildResponse(
-        datacubeUrl, f"{datacubeUrl}.png", preview)
+        datacubeURL=datacubeUrl,
+        previewURL=f"{datacubeUrl}.png",
+        preview=preview)
 
 
-@api.route('/build')
-class DataCube_Build(Resource):
+def build_datacube(request: TransformedCubeBuildRequest,
+                   logger: Logger) -> DatacubeBuildResponse:
 
-    @api.expect(DATACUBE_BUILD_REQUEST)
-    @api.marshal_with(DATACUBE_BUILD_RESPONSE)
-    def post(self):
-        api.logger.info("[POST] /build")
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        f = executor.submit(_build_datacube, request, logger)
+        result = f.result()
 
-        try:
-            request = DatacubeBuildRequest(**api.payload)
-        except Exception as e:
-            raise BadRequest(e.args)
+    if issubclass(type(result), AbstractError):
+        raise result
 
-        with concurrent.futures.ProcessPoolExecutor() as executor:
-            f = executor.submit(post_cube_build, request)
-            result = f.result()
-
-        if issubclass(type(result), AbstractError):
-            raise result
-
-        return result, HTTPStatus.OK
+    return result

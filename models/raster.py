@@ -20,16 +20,16 @@ from utils.enums import ChunkingStrategy as CStrat
 class Raster:
 
     def __init__(self, band: str, rasterReader: DatasetReader,
-                 targetProjection, polygon: Polygon):
+                 target_projection, polygon: Polygon):
         self.band = band
         self.dtype = rasterReader.dtypes[0].lower()
-        self.crs = targetProjection
+        self.crs = target_projection
 
         # Extract the ROI in local referential
         if rasterReader.crs is None:
             rasterReader.crs = "EPSG:4326"
         localProjectionPolygon = projectPolygon(
-                polygon, targetProjection, rasterReader.crs)
+                polygon, target_projection, rasterReader.crs)
 
         # Some raster files are not georeferenced with transform but with GCP
         if rasterReader.transform == IDENTITY:
@@ -65,11 +65,11 @@ class Raster:
 
         # Project the raster in the target projection
         self.transform, self.width, self.height = calculate_default_transform(
-            rasterReader.crs, targetProjection,
+            rasterReader.crs, target_projection,
             self.width, self.height, *self.bounds)
 
         self.bounds = transform_bounds(
-            rasterReader.crs, targetProjection, *self.bounds)
+            rasterReader.crs, target_projection, *self.bounds)
 
         projectedRasterData = np.zeros((self.height, self.width))
 
@@ -78,7 +78,7 @@ class Raster:
                   src_crs=rasterReader.crs,
                   src_nodata=rasterReader.nodata,
                   src_transform=src_transform,
-                  dst_crs=targetProjection,
+                  dst_crs=target_projection,
                   dst_nodata=None,
                   dst_transform=self.transform,
                   resampling=Resampling.nearest)

@@ -26,17 +26,17 @@ class Sentinel2_Level2A_Theia(AbstractRasterArchive):
                                      format="L2A-Theia")
 
     def __init__(self, objectStore: AbstractObjectStore, rasterURI: str,
-                 bands: Dict[str, str], targetResolution: int,
+                 bands: Dict[str, str], target_resolution: int,
                  rasterTimestamp: int, zipExtractPath: str):
 
         self.rasterTimestamp = rasterTimestamp
-        self._findBandsResolution(bands, targetResolution)
+        self._findBandsResolution(bands, target_resolution)
         self._extract_metadata(objectStore, rasterURI, bands, zipExtractPath)
 
     def _findBandsResolution(self, bands: Dict[str, str],
-                             targetResolution: int):
+                             target_resolution: int):
         # Force the resolution to be higher than HIGH_RESOLUTION
-        self.targetResolution = max(HIGH_RESOLUTION, targetResolution)
+        self.target_resolution = max(HIGH_RESOLUTION, target_resolution)
 
         self.bandsWithResolution = {}
         for band in bands.values():
@@ -72,9 +72,9 @@ class Sentinel2_Level2A_Theia(AbstractRasterArchive):
             else:
                 raise DownloadError(f"Band '{band}' not found")
 
-        # targetResolution can not be higher than the resolutions of the bands
-        self.targetResolution = min(self.targetResolution,
-                                    min(self.bandsWithResolution.values()))
+        # target_resolution can not be higher than the resolutions of the bands
+        self.target_resolution = min(self.target_resolution,
+                                     min(self.bandsWithResolution.values()))
 
     def _extract_metadata(self, objectStore: AbstractObjectStore,
                           rasterURI: str, bands: Dict[str, str],

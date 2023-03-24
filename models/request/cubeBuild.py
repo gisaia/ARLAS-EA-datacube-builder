@@ -2,7 +2,6 @@ from typing import Dict, List, Annotated
 from fastapi import Query
 from pydantic import BaseModel
 from shapely.geometry import Polygon
-from dataclasses import dataclass
 
 from .rasterProductType import RasterProductType
 from .rasterGroup import RasterGroup
@@ -34,7 +33,7 @@ CHUNKING_DESCRIPTION = "Defines how we want the datacube to be chunked, " + \
 class CubeBuildRequest(BaseModel):
     composition: Annotated[
         List[RasterGroup], Query(description=COMPOSITION_DESCRIPTION)]
-    dataCubePath: Annotated[
+    datacube_path: Annotated[
         str, Query(description=DATACUBEPATH_DESCRIPTION)]
     bands: Annotated[
         List[Band], Query(description=BANDS_DESCRIPTION)]
@@ -42,47 +41,40 @@ class CubeBuildRequest(BaseModel):
         Dict[str, List[str]], Query(description=ALIASES_DESCRIPTION)]
     roi: Annotated[
         str, Query(description=ROI_DESCRIPTION)]
-    targetResolution: Annotated[
-        int, Query(description=RESOLUTION_DESCRIPTION)] = 10
-    targetProjection: Annotated[
+    target_resolution: Annotated[
+        int, Query(description=RESOLUTION_DESCRIPTION, gt=0)] = 10
+    target_projection: Annotated[
         str, Query(description=PROJECTION_DESCRIPTION)] = "EPSG:4326"
-    chunkingStrategy: Annotated[
+    chunking_strategy: Annotated[
         CStrat, Query(description=CHUNKING_DESCRIPTION)] = CStrat.POTATO
 
 
-@dataclass
-class TransformedCubeBuildRequest:
-    composition: List[RasterGroup]
-    dataCubePath: str
-    bands: List[Band]
-    aliases: Dict[str, RasterProductType]
-    roi: Polygon
-    targetResolution: int
-    targetProjection: str
-    chunkingStrategy: CStrat
-    rgb: Dict[RGB, str]
+class ExtendedCubeBuildRequest(CubeBuildRequest, arbitrary_types_allowed=True):
+    roi_polygon: Annotated[
+        Polygon, None] = Polygon()
+    product_aliases: Annotated[
+        Dict[str, RasterProductType], None] = {}
+    rgb: Annotated[
+        Dict[RGB, str], None] = {}
 
     def __init__(self, request: CubeBuildRequest):
-        self.composition = request.composition
-        self.dataCubePath = request.dataCubePath
-        self.bands = request.bands
-        self.aliases = request.aliases
-        self.roi = roi2geometry(request.roi)
-        self.targetResolution = request.targetResolution
-        self.targetProjection = request.targetProjection
-        self.chunkingStrategy = request.chunkingStrategy
+        super().__init__(**request.dict())
 
-        self.aliases = {}
+        self.roi_polygon = roi2geometry(request.roi)
+
         for k, v in request.aliases.items():
-            self.aliases[k] = RasterProductType(source=v[0], format=v[1])
+            if len(v) != 2:
+                raise BadRequest("Aliases should be specified" +
+                                 "with source and format as values")
+            self.product_aliases[k] = RasterProductType(
+                source=v[0], format=v[1])
         for group in self.composition:
             for file in group.rasters:
-                if file.type not in self.aliases.values():
+                if file.type not in self.product_aliases.values():
                     raise BadRequest("Aliases were not defined for type: " +
                                      f"source:{file.type.source}, " +
                                      f"format:{file.type.format}")
 
-        self.rgb: Dict[RGB, str] = {}
         for band in self.bands:
             band.check_visualistion()
             if band.rgb is not None:

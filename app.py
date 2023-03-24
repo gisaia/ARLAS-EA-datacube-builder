@@ -1,8 +1,6 @@
 #!/usr/bin/python3
 
 import argparse
-import logging
-from logging.config import dictConfig
 import uvicorn
 from fastapi import FastAPI
 import json
@@ -10,10 +8,11 @@ import json
 from api_methods.build_cube import build_datacube
 
 from models.request.cubeBuild import CubeBuildRequest, \
-                                     TransformedCubeBuildRequest
+                                     ExtendedCubeBuildRequest
+
+from utils.logger import CustomLogger as Logger
 
 LOGGER_CONFIG_FILE = "configs/logging.json"
-LOGGER_NAME = "dc3-logger"
 
 
 if __name__ == "__main__":
@@ -31,17 +30,16 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     with open(LOGGER_CONFIG_FILE, "r") as f:
-        dictConfig(json.load(f))
-    logger = logging.getLogger(LOGGER_NAME)
+        Logger.registerLogger(json.load(f))
 
     # Create app and define functions
     app = FastAPI(debug=args.debug)
 
     @app.post("/cube/build")
     async def cube_build(request: CubeBuildRequest):
-        build_datacube(TransformedCubeBuildRequest(request), logger)
+        build_datacube(ExtendedCubeBuildRequest(request))
 
     if not args.debug:
-        logger.setLevel("INFO")
+        Logger.getLogger().setLevel("INFO")
 
     uvicorn.run(app, host=args.host, port=args.port)

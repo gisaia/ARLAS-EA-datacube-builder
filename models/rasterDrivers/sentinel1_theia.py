@@ -18,7 +18,7 @@ class Sentinel1_Theia(AbstractRasterArchive):
                                      format="Theia")
 
     def __init__(self, objectStore: AbstractObjectStore, rasterURI: str,
-                 bands: Dict[str, str], targetResolution: int,
+                 bands: Dict[str, str], target_resolution: int,
                  rasterTimestamp: int, zipExtractPath: str):
 
         if len(bands) != 1:
@@ -26,7 +26,7 @@ class Sentinel1_Theia(AbstractRasterArchive):
                 f"There is only one band in {self.PRODUCT_TYPE.source} " +
                 self.PRODUCT_TYPE.format)
         self.rasterTimestamp = rasterTimestamp
-        self.targetResolution = targetResolution
+        self.target_resolution = target_resolution
         self._extract_metadata(objectStore, rasterURI, bands, zipExtractPath)
 
     def _extract_metadata(self, objectStore: AbstractObjectStore,

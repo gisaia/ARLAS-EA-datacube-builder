@@ -23,18 +23,18 @@ FINAL = "final"
 class AbstractRasterArchive(abc.ABC):
     bandsToExtract: Dict[str, str]
     productTime: int
-    targetResolution: float
+    target_resolution: float
     rasterTimestamp: int
 
     @abc.abstractmethod
     def __init__(self, objectStore: AbstractObjectStore, rasterURI: str,
-                 bands: Dict[str, str], targetResolution: int,
+                 bands: Dict[str, str], target_resolution: int,
                  rasterTimestamp: int, zipExtractPath: str):
         pass
 
     # Loosely inspired from
     # https://gist.github.com/lucaswells/fd2fd73c513872966c1a0257afee1887
-    def buildZarr(self, zarrRootPath, targetProjection: str,
+    def buildZarr(self, zarrRootPath, target_projection: str,
                   polygon: Polygon = None) -> str:
         """
         Build a chunked and zarr from raster files.
@@ -60,7 +60,7 @@ class AbstractRasterArchive(abc.ABC):
         for band, rasterPath in self.bandsToExtract.items():
             with rasterio.open(rasterPath, "r+") as rasterReader:
                 # Create Raster object
-                raster = Raster(band, rasterReader, targetProjection, polygon)
+                raster = Raster(band, rasterReader, target_projection, polygon)
 
                 # Create zarr store
                 zarrStore = raster.createZarrStore(

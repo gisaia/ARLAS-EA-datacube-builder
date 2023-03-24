@@ -1,7 +1,7 @@
 from typing import Dict, List, Type, Match
 import re
 
-from models.request.cubeBuild import CubeBuildRequest
+from models.request.cubeBuild import ExtendedCubeBuildRequest
 from models.request.rasterProductType import RasterProductType
 from models.errors import BadRequest
 from models.rasterDrivers import AbstractRasterArchive, \
@@ -12,7 +12,7 @@ from models.rasterDrivers import AbstractRasterArchive, \
                                  TheiaSnow
 
 
-def getProductBands(request: CubeBuildRequest,
+def getProductBands(request: ExtendedCubeBuildRequest,
                     productType: RasterProductType) -> Dict[str, str]:
     """
     Based on the request, creates a dictionnary with the pair
@@ -20,7 +20,7 @@ def getProductBands(request: CubeBuildRequest,
     """
     # Extract from the request which bands are required
     aliasProduct = ""
-    for k, v in request.aliases.items():
+    for k, v in request.product_aliases.items():
         if v == productType:
             aliasProduct = k
             break

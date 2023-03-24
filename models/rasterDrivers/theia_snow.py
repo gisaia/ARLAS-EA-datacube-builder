@@ -25,11 +25,11 @@ class TheiaSnow(AbstractRasterArchive):
                                      format="Snow")
 
     def __init__(self, objectStore: AbstractObjectStore, rasterURI: str,
-                 bands: Dict[str, str], targetResolution: int,
+                 bands: Dict[str, str], target_resolution: int,
                  rasterTimestamp: int, zipExtractPath: str):
 
         self.rasterTimestamp = rasterTimestamp
-        self.targetResolution = targetResolution
+        self.target_resolution = target_resolution
         self._checkBands(bands)
         self._extract_metadata(objectStore, rasterURI, bands, zipExtractPath)
 

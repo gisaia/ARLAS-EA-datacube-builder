@@ -1,14 +1,14 @@
 import xarray as xr
 from datetime import datetime
 
-from models.request.cubeBuild import CubeBuildRequest
+from models.request.cubeBuild import ExtendedCubeBuildRequest
 from models.metadata import HorizontalSpatialDimension, \
                             TemporalDimension, Variable, \
                             DatacubeMetadata
 from utils.enums import RGB
 
 
-def create_datacube_metadata(request: CubeBuildRequest,
+def create_datacube_metadata(request: ExtendedCubeBuildRequest,
                              datacube: xr.Dataset, xStep, yStep):
     # Remove metdata created during datacube creation
     datacube.attrs = {}
@@ -18,14 +18,14 @@ def create_datacube_metadata(request: CubeBuildRequest,
         axis="x", description="",
         extent=[float(datacube.get("x").values[0]),
                 float(datacube.get("x").values[-1])],
-        step=xStep, reference_system=request.targetProjection
+        step=xStep, reference_system=request.target_projection
     )
 
     dimensions["y"] = HorizontalSpatialDimension(
         axis="y", description="",
         extent=[float(datacube.get("y").values[0]),
                 float(datacube.get("y").values[-1])],
-        step=yStep, reference_system=request.targetProjection
+        step=yStep, reference_system=request.target_projection
     )
 
     dimensions["t"] = TemporalDimension(

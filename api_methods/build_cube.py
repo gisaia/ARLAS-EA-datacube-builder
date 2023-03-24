@@ -3,7 +3,6 @@ from typing import List, Dict, Tuple
 import traceback
 
 import base64
-from logging import Logger
 import os
 import os.path as path
 import shutil
@@ -14,7 +13,7 @@ import smart_open as so
 import mr4mp
 import concurrent.futures
 
-from models.request.cubeBuild import TransformedCubeBuildRequest
+from models.request.cubeBuild import ExtendedCubeBuildRequest
 
 from models.response.datacube_build import DatacubeBuildResponse
 from models.errors import DownloadError, \
@@ -22,6 +21,7 @@ from models.errors import DownloadError, \
 
 from utils.enums import ChunkingStrategy as CStrat
 from utils.geometry import completeGrid
+from utils.logger import CustomLogger as Logger
 from utils.metadata import create_datacube_metadata
 from utils.objectStore import createInputObjectStore, \
                               getMapperOutputObjectStore, \
@@ -35,7 +35,7 @@ from urllib.parse import urlparse
 TMP_DIR = "tmp/"
 
 
-def download(input: Tuple[TransformedCubeBuildRequest, int, int, Logger]) \
+def download(input: Tuple[ExtendedCubeBuildRequest, int, int]) \
         -> Dict[float, List[str]]:
     """
     Builds a zarr corresponding to the requested bands for
@@ -44,7 +44,7 @@ def download(input: Tuple[TransformedCubeBuildRequest, int, int, Logger]) \
     request = input[0]
     groupIdx = input[1]
     fileIdx = input[2]
-    logger = input[3]
+    logger = Logger.getLogger()
 
     try:
         # Retrieve from the request the important information
@@ -59,15 +59,16 @@ def download(input: Tuple[TransformedCubeBuildRequest, int, int, Logger]) \
         rasterArchive = getRasterDriver(rasterFile.type)(
             inputObjectStore, rasterFile.path,
             getProductBands(request, rasterFile.type),
-            request.targetResolution,
+            request.target_resolution,
             timestamp, TMP_DIR)
 
         logger.info(f"[group-{groupIdx}:file-{fileIdx}] Building ZARR")
         # Build the zarr dataset and add it to its group's list
-        zarrRootPath = path.join(TMP_DIR, f"{request.dataCubePath}",
+        zarrRootPath = path.join(TMP_DIR, f"{request.datacube_path}",
                                  f'{groupIdx}/{fileIdx}')
-        zarrPath = rasterArchive.buildZarr(
-            zarrRootPath, request.targetProjection, polygon=request.roi)
+        zarrPath = rasterArchive.buildZarr(zarrRootPath,
+                                           request.target_projection,
+                                           polygon=request.roi_polygon)
 
         groupedDatasets: Dict[int, List[str]] = {timestamp: [zarrPath]}
         return groupedDatasets
@@ -130,16 +131,16 @@ def merge_mosaicking(mosaick_a: xr.Dataset,
         (mosaick_a, mosaick_b), combine_attrs="override")
 
 
-def _build_datacube(request: TransformedCubeBuildRequest,
-                    logger: Logger):
+def _build_datacube(request: ExtendedCubeBuildRequest):
+    logger = Logger.getLogger()
     groupedDatasets: dict[int, List[str]] = {}
 
     centerGranuleIdx = {"group": int, "index": int}
     xmin, ymin, xmax, ymax = np.inf, np.inf, -np.inf, -np.inf
-    roiCentroid: Point = request.roi.centroid
+    roiCentroid: Point = request.roi_polygon.centroid
     minDistance = np.inf
 
-    zarrRootPath = path.join(TMP_DIR, request.dataCubePath)
+    zarrRootPath = path.join(TMP_DIR, request.datacube_path)
 
     # Generate the iterable of all files to download
     mapReduceIter = []
@@ -220,7 +221,8 @@ def _build_datacube(request: TransformedCubeBuildRequest,
 
     # Compute the bands requested from the product bands
     for band in request.bands:
-        datacube[band.name] = eval(getEvalFormula(band.value, request.aliases))
+        datacube[band.name] = eval(
+            getEvalFormula(band.value, request.product_aliases))
         if band.min is not None and band.max is not None:
             datacube[band.name] = datacube[band.name].clip(band.min, band.max)
 
@@ -234,10 +236,10 @@ def _build_datacube(request: TransformedCubeBuildRequest,
     logger.info("Writing datacube to Object Store")
     try:
         datacubeUrl, mapper = getMapperOutputObjectStore(
-            request.dataCubePath)
+            request.datacube_path)
 
         datacube.chunk(getChunkShape(
-                datacube.dims, request.chunkingStrategy)) \
+                datacube.dims, request.chunking_strategy)) \
             .to_zarr(mapper, mode="w") \
             .close()
 
@@ -270,20 +272,17 @@ def _build_datacube(request: TransformedCubeBuildRequest,
     if path.exists(zarrRootPath) and path.isdir(zarrRootPath):
         shutil.rmtree(zarrRootPath)
     os.remove(f'{zarrRootPath}.png')
-    if path.exists(f'{zarrRootPath}.png.aux.xml'):
-        os.remove(f'{zarrRootPath}.png.aux.xml')
 
     return DatacubeBuildResponse(
-        datacubeURL=datacubeUrl,
-        previewURL=f"{datacubeUrl}.png",
+        datacube_url=datacubeUrl,
+        preview_url=f"{datacubeUrl}.png",
         preview=preview)
 
 
-def build_datacube(request: TransformedCubeBuildRequest,
-                   logger: Logger) -> DatacubeBuildResponse:
+def build_datacube(request: ExtendedCubeBuildRequest) -> DatacubeBuildResponse:
 
     with concurrent.futures.ProcessPoolExecutor() as executor:
-        f = executor.submit(_build_datacube, request, logger)
+        f = executor.submit(_build_datacube, request)
         result = f.result()
 
     if issubclass(type(result), AbstractError):

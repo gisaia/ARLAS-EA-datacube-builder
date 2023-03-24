@@ -8,6 +8,6 @@ PREVIEW_DESCRIPTION = "The preview of the datacube encoded in base64"
 
 
 class DatacubeBuildResponse(BaseModel):
-    datacubeURL: Annotated[str, Query(description=DC_URL_DESCRIPTION)]
-    previewURL: Annotated[str, Query(description=PREVIEW_URL_DESCRIPTION)]
+    datacube_url: Annotated[str, Query(description=DC_URL_DESCRIPTION)]
+    preview_url: Annotated[str, Query(description=PREVIEW_URL_DESCRIPTION)]
     preview: Annotated[str, Query(description=PREVIEW_DESCRIPTION)]

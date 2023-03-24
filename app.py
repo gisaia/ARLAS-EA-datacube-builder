@@ -30,7 +30,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     with open(LOGGER_CONFIG_FILE, "r") as f:
-        Logger.registerLogger(json.load(f))
+        Logger.register_logger(json.load(f))
 
     # Create app and define functions
     app = FastAPI(debug=args.debug)
@@ -40,6 +40,6 @@ if __name__ == "__main__":
         build_datacube(ExtendedCubeBuildRequest(request))
 
     if not args.debug:
-        Logger.getLogger().setLevel("INFO")
+        Logger.get_logger().setLevel("INFO")
 
     uvicorn.run(app, host=args.host, port=args.port)

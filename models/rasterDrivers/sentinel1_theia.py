@@ -17,41 +17,42 @@ class Sentinel1_Theia(AbstractRasterArchive):
     PRODUCT_TYPE = RasterProductType(source="Sentinel1",
                                      format="Theia")
 
-    def __init__(self, objectStore: AbstractObjectStore, rasterURI: str,
+    def __init__(self, object_store: AbstractObjectStore, raster_uri: str,
                  bands: Dict[str, str], target_resolution: int,
-                 rasterTimestamp: int, zipExtractPath: str):
+                 raster_timestamp: int, zip_extract_path: str):
 
         if len(bands) != 1:
             raise DownloadError(
                 f"There is only one band in {self.PRODUCT_TYPE.source} " +
                 self.PRODUCT_TYPE.format)
-        self.rasterTimestamp = rasterTimestamp
+        self.raster_timestamp = raster_timestamp
         self.target_resolution = target_resolution
-        self._extract_metadata(objectStore, rasterURI, bands, zipExtractPath)
+        self._extract_metadata(object_store, raster_uri,
+                               bands, zip_extract_path)
 
-    def _extract_metadata(self, objectStore: AbstractObjectStore,
-                          rasterURI: str, bands: Dict[str, str],
-                          zipExtractPath: str):
-        self.bandsToExtract = {}
+    def _extract_metadata(self, object_store: AbstractObjectStore,
+                          raster_uri: str, bands: Dict[str, str],
+                          zip_extract_path: str):
+        self.bands_to_extract = {}
 
-        params = {'client': objectStore.client}
+        params = {'client': object_store.client}
 
-        with so.open(rasterURI, "rb", transport_params=params) as fileCloud:
-            fileName = urlparse(rasterURI).path[1:]
+        with so.open(raster_uri, "rb", transport_params=params) as fileCloud:
+            f_name = urlparse(raster_uri).path[1:]
 
-            if len(re.findall(r".*\_(\w*)\.tiff", fileName)) != 1:
-                raise DownloadError(f"File {fileName} does not contain " +
+            if len(re.findall(r".*\_(\w*)\.tiff", f_name)) != 1:
+                raise DownloadError(f"File {f_name} does not contain " +
                                     "product timestamp in its name.")
-            self.productTime = int(parser.parse(
-                re.findall(r".*\_(\w*)\.tiff", fileName)[0]).timestamp())
+            self.product_time = int(parser.parse(
+                re.findall(r".*\_(\w*)\.tiff", f_name)[0]).timestamp())
 
-            if not path.exists(zipExtractPath + fileName):
-                with open(path.join(zipExtractPath, fileName), "wb") as f:
+            if not path.exists(zip_extract_path + f_name):
+                with open(path.join(zip_extract_path, f_name), "wb") as f:
                     f.write(fileCloud.read())
 
-            self.bandsToExtract[list(bands.keys())[0]] = path.join(
-                            zipExtractPath, fileName)
+            self.bands_to_extract[list(bands.keys())[0]] = path.join(
+                            zip_extract_path, f_name)
 
-            if len(bands) != len(self.bandsToExtract):
+            if len(bands) != len(self.bands_to_extract):
                 raise DownloadError("Some of the required files " +
                                     "were not found")

@@ -53,8 +53,8 @@ curl -X POST -H "Content-Type: application/json" -d '{
             "timestamp": 1664928000
         }
     ],
-    "dataCubePath": "demo_datacube",
+    "datacube_path": "demo_datacube",
     "roi": "-1.738586,42.688794,-1.505968,42.87091",
     "bands": ["B05"],
-    "targetResolution": 20
+    "target_resolution": 20
     }' http://localhost:5000/cube/build

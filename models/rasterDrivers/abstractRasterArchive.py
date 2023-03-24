@@ -12,7 +12,7 @@ from shapely.geometry import Polygon
 from models.objectStoreDrivers.abstractObjectStore import AbstractObjectStore
 from models.raster import Raster
 
-from utils.xarray import getChunkShape
+from utils.xarray import get_chunk_shape
 from utils.enums import ChunkingStrategy as CStrat
 
 TMP = "tmp"
@@ -21,93 +21,95 @@ FINAL = "final"
 
 @dataclass
 class AbstractRasterArchive(abc.ABC):
-    bandsToExtract: Dict[str, str]
-    productTime: int
+    bands_to_extract: Dict[str, str]
+    product_time: int
     target_resolution: float
-    rasterTimestamp: int
+    raster_timestamp: int
 
     @abc.abstractmethod
-    def __init__(self, objectStore: AbstractObjectStore, rasterURI: str,
+    def __init__(self, object_store: AbstractObjectStore, raster_uri: str,
                  bands: Dict[str, str], target_resolution: int,
-                 rasterTimestamp: int, zipExtractPath: str):
+                 raster_timestamp: int, zip_extract_path: str):
         pass
 
     # Loosely inspired from
     # https://gist.github.com/lucaswells/fd2fd73c513872966c1a0257afee1887
-    def buildZarr(self, zarrRootPath, target_projection: str,
-                  polygon: Polygon = None) -> str:
+    def build_zarr(self, zarr_root_path, target_projection: str,
+                   polygon: Polygon = None) -> str:
         """
         Build a chunked and zarr from raster files.
 
         Parameters
         ----------
-        zarrRootPath : str
+        zarr_root_path : str
             The root path where the temporary and final zarrs will be created
         polygon: Polygon, optional
             Polygon representing the ROI
         chunk_mbs : float, optional
             Desired size (MB) of chunks in zarr file
         """
-        zarrTmpRootPath = path.join(zarrRootPath, TMP)
+        zarr_tmp_root_path = path.join(zarr_root_path, TMP)
 
         # Open all rasters to get the zarr stores
         zarrs = []
-        maxWidth = 0
-        maxHeight = 0
+        max_width = 0
+        max_height = 0
 
         # Create all the zarr files/stores
         # Finds the most precise grid for the zarrs
-        for band, rasterPath in self.bandsToExtract.items():
-            with rasterio.open(rasterPath, "r+") as rasterReader:
+        for band, raster_path in self.bands_to_extract.items():
+            with rasterio.open(raster_path, "r+") as raster_reader:
                 # Create Raster object
-                raster = Raster(band, rasterReader, target_projection, polygon)
+                raster = Raster(band, raster_reader,
+                                target_projection, polygon)
 
                 # Create zarr store
-                zarrStore = raster.createZarrStore(
-                    zarrTmpRootPath, self.productTime,
-                    self.rasterTimestamp)
+                zarr_dir = raster.create_zarr_dir(
+                    zarr_tmp_root_path, self.product_time,
+                    self.raster_timestamp)
 
                 # Retrieve the most precise axis for future interpolation
-                if raster.width > maxWidth:
-                    maxWidth = raster.width
-                    with xr.open_zarr(zarrStore) as ds:
+                if raster.width > max_width:
+                    max_width = raster.width
+                    with xr.open_zarr(zarr_dir) as ds:
                         xGrid = ds.get("x")
-                if raster.height > maxHeight:
-                    maxHeight = raster.height
-                    with xr.open_zarr(zarrStore) as ds:
+                if raster.height > max_height:
+                    max_height = raster.height
+                    with xr.open_zarr(zarr_dir) as ds:
                         yGrid = ds.get("y")
 
-                zarrs.append(zarrStore)
+                zarrs.append(zarr_dir)
                 metadata = raster.metadata
 
         # Retrieve the zarr stores as xarray objects that are on a same grid
-        commonGrid = xr.Dataset({"x": xGrid, "y": yGrid})
-        mergedBands: xr.Dataset = None
-        for zarrStore in zarrs:
-            with xr.open_zarr(zarrStore) as xrZarr:
-                if xrZarr.dims["x"] != maxWidth \
-                        or xrZarr.dims["y"] != maxHeight:
-                    chunkShape = getChunkShape(xrZarr.dims, CStrat.SPINACH)
-                    xrZarr = xrZarr.interp_like(commonGrid) \
-                                   .chunk(chunkShape)
+        common_grid = xr.Dataset({"x": xGrid, "y": yGrid})
+        merged_bands: xr.Dataset = None
+        for zarr_dir in zarrs:
+            with xr.open_zarr(zarr_dir) as xr_zarr:
+                if xr_zarr.dims["x"] != max_width \
+                        or xr_zarr.dims["y"] != max_height:
+                    chunk_shape = get_chunk_shape(xr_zarr.dims, CStrat.SPINACH)
+                    xr_zarr = xr_zarr.interp_like(common_grid) \
+                                     .chunk(chunk_shape)
                 # If raster is Sentinel2, replace negative values with NaN
                 if type(self).PRODUCT_TYPE.source == "Sentinel2":
-                    for band in xrZarr.data_vars:
-                        xrZarr[band] = xrZarr[band].where(xrZarr[band] >= 0)
-                if mergedBands is None:
-                    mergedBands = xrZarr
+                    for band in xr_zarr.data_vars:
+                        xr_zarr[band] = xr_zarr[band].where(xr_zarr[band] >= 0)
+                if merged_bands is None:
+                    merged_bands = xr_zarr
                 else:
-                    mergedBands = xr.merge((mergedBands, xrZarr))
+                    merged_bands = xr.merge((merged_bands, xr_zarr))
 
         # Merge all bands and remove temporary zarrs
-        mergedBands.assign_attrs(metadata) \
-                   .to_zarr(path.join(zarrRootPath, FINAL), mode="w") \
-                   .close()
+        merged_bands.assign_attrs(metadata) \
+                    .to_zarr(path.join(zarr_root_path, FINAL), mode="w") \
+                    .close()
 
         # Clean up the temporary files created
         del zarrs
-        del mergedBands
-        if os.path.exists(zarrTmpRootPath) and os.path.isdir(zarrTmpRootPath):
-            shutil.rmtree(zarrTmpRootPath)
+        del merged_bands
+        if os.path.exists(zarr_tmp_root_path) and \
+                os.path.isdir(zarr_tmp_root_path):
+            shutil.rmtree(zarr_tmp_root_path)
 
-        return path.join(zarrRootPath, FINAL)
+        return path.join(zarr_root_path, FINAL)

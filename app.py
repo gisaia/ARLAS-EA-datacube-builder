@@ -5,12 +5,10 @@ import uvicorn
 from fastapi import FastAPI
 import json
 
-from api_methods.build_cube import build_datacube
-
-from models.request.cubeBuild import CubeBuildRequest, \
-                                     ExtendedCubeBuildRequest
-
-from utils.logger import CustomLogger as Logger
+from datacube.core.build_cube import build_datacube
+from datacube.core.models.request.cubeBuild import CubeBuildRequest, \
+                                                   ExtendedCubeBuildRequest
+from datacube.core.visualisation.logger import CustomLogger as Logger
 
 LOGGER_CONFIG_FILE = "configs/logging.json"
 

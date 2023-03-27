@@ -38,6 +38,7 @@ from datacube.core.geo.xarray import get_bounds, \
 from urllib.parse import urlparse
 
 TMP_DIR = "tmp/"
+LOGGER = Logger.get_logger()
 
 
 def download(input: Tuple[ExtendedCubeBuildRequest, int, int]) \
@@ -49,7 +50,6 @@ def download(input: Tuple[ExtendedCubeBuildRequest, int, int]) \
     request = input[0]
     group_idx = input[1]
     file_idx = input[2]
-    logger = Logger.get_logger()
 
     try:
         # Retrieve from the request the important information
@@ -59,7 +59,7 @@ def download(input: Tuple[ExtendedCubeBuildRequest, int, int]) \
         input_object_store = create_input_object_store(
                         urlparse(raster_file.path).scheme)
 
-        logger.info(f"[group-{group_idx}:file-{file_idx}] Extracting bands")
+        LOGGER.info(f"[group-{group_idx}:file-{file_idx}] Extracting bands")
         # Depending on archive type, extract desired data
         raster_archive = get_raster_driver(raster_file.type)(
             input_object_store, raster_file.path,
@@ -67,7 +67,7 @@ def download(input: Tuple[ExtendedCubeBuildRequest, int, int]) \
             request.target_resolution,
             timestamp, TMP_DIR)
 
-        logger.info(f"[group-{group_idx}:file-{file_idx}] Building ZARR")
+        LOGGER.info(f"[group-{group_idx}:file-{file_idx}] Building ZARR")
         # Build the zarr dataset and add it to its group's list
         zarr_root_path = path.join(TMP_DIR, f"{request.datacube_path}",
                                    f'{group_idx}/{file_idx}')
@@ -79,7 +79,7 @@ def download(input: Tuple[ExtendedCubeBuildRequest, int, int]) \
         return grouped_datasets
 
     except Exception as e:
-        logger.error(f"[group-{group_idx}:file-{file_idx}]")
+        LOGGER.error(f"[group-{group_idx}:file-{file_idx}]")
         traceback.print_exc()
         raise DownloadError(e.args[0])
 
@@ -137,7 +137,6 @@ def merge_mosaicking(mosaick_a: xr.Dataset,
 
 
 def __build_datacube(request: ExtendedCubeBuildRequest):
-    logger = Logger.get_logger()
     grouped_datasets: dict[int, List[str]] = {}
 
     center_granule_idx = {"group": int, "index": int}
@@ -151,7 +150,7 @@ def __build_datacube(request: ExtendedCubeBuildRequest):
     download_iter = []
     for group_idx in range(len(request.composition)):
         for idx in range(len(request.composition[group_idx].rasters)):
-            download_iter.append((request, group_idx, idx, logger))
+            download_iter.append((request, group_idx, idx, LOGGER))
 
     # Download parallely the groups of bands of each file
     try:
@@ -179,7 +178,7 @@ def __build_datacube(request: ExtendedCubeBuildRequest):
                 xmax = max(xmax, ds_bounds[2])
                 ymax = max(ymax, ds_bounds[3])
 
-    logger.info("Building datacube from the ZARRs")
+    LOGGER.info("Building datacube from the ZARRs")
     # If there is more than one file requested
     if not (len(request.composition) == 1 and
             len(request.composition[0].rasters) == 1):
@@ -211,7 +210,7 @@ def __build_datacube(request: ExtendedCubeBuildRequest):
                                           mosaicking_iter)
 
         except Exception as e:
-            logger.error(e)
+            LOGGER.error(e)
             traceback.print_exc()
             return MosaickingError(e.args[0])
     else:
@@ -238,7 +237,7 @@ def __build_datacube(request: ExtendedCubeBuildRequest):
     # Add relevant datacube metadata
     datacube = create_datacube_metadata(request, datacube, lon_step, lat_step)
 
-    logger.info("Writing datacube to Object Store")
+    LOGGER.info("Writing datacube to Object Store")
     try:
         datacube_url, mapper = get_mapper_output_object_store(
             request.datacube_path)
@@ -249,11 +248,11 @@ def __build_datacube(request: ExtendedCubeBuildRequest):
             .close()
 
     except Exception as e:
-        logger.error(e)
+        LOGGER.error(e)
         traceback.print_exc()
         return UploadError(f"Datacube: {e.args[0]}")
 
-    logger.info("Uploading preview to Object Store")
+    LOGGER.info("Uploading preview to Object Store")
     try:
         if len(datacube.attrs["preview"]) == 3:
             preview = create_preview_b64(datacube, request.rgb,
@@ -269,7 +268,7 @@ def __build_datacube(request: ExtendedCubeBuildRequest):
                      transport_params={"client": client}) as fb:
             fb.write(base64.b64decode(preview))
     except Exception as e:
-        logger.error(e)
+        LOGGER.error(e)
         traceback.print_exc()
         return UploadError(f"Preview: {e.args[0]}")
 

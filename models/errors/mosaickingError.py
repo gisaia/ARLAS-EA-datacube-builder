@@ -1,6 +1,9 @@
-from .abstractError import AbstractError
+from fastapi import HTTPException
 
 
-class MosaickingError(AbstractError):
-    code = 500
-    description = "Error when mosaicking the rasters"
+class MosaickingError(HTTPException):
+
+    def __init__(self, msg: str):
+        self.status_code = 500
+        self.detail = msg
+        self.description = "Error when mosaicking the rasters"

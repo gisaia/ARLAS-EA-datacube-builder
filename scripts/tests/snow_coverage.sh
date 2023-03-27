@@ -87,7 +87,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
             "timestamp": 1598918400
         }
     ],
-    "dataCubePath": "snowCoveragePyrenees",
+    "datacube_path": "snowCoveragePyrenees",
     "roi": "-1.774729,42.329373,0.788877,43.353336",
     "bands": [
         {
@@ -96,7 +96,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
             "description": "Snow Coverage Duration"
         }
     ],
-    "targetResolution": 20,
+    "target_resolution": 20,
     "aliases": {
         "Snow": ["Theia", "Snow"]
     }

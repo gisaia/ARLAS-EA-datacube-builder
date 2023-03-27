@@ -18,3 +18,5 @@ dask
 mr4mp==2.6.2
 Pillow==9.0.1
 matplotlib==3.5.2
+fastapi==0.95.0
+uvicorn==0.21.1

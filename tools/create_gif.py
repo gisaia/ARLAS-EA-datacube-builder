@@ -13,8 +13,8 @@ import sys
 from pathlib import Path
 ROOT_PATH = str(Path(__file__).parent.parent)
 sys.path.insert(0, ROOT_PATH)
-from utils.preview import createPreviewB64, createPreviewB64Cmap, \
-                          addTextOnWhiteBand
+from utils.preview import create_preview_b64, create_preview_b64_cmap, \
+                          add_text_on_white_band
 from utils.enums import RGB
 
 TMP_DIR = "tmp/"
@@ -43,32 +43,32 @@ def create_gif(datacube: xr.Dataset, gif_name: str):
     # Find where to put the temporary pictures
     matches = re.findall(r"(.*)\.gif", gif_name)
     if len(matches) == 0:
-        gifRootPath = gif_name
+        gif_root_path = gif_name
     else:
-        gifRootPath = matches[0]
-    os.makedirs(path.join(TMP_DIR, gifRootPath), exist_ok=True)
+        gif_root_path = matches[0]
+    os.makedirs(path.join(TMP_DIR, gif_root_path), exist_ok=True)
 
     times = list(map(lambda t: datetime.fromtimestamp(t), datacube.t.values))
 
     # Generate the pictures for the gif
     for t_text, t in zip(truncate_datetime(times), datacube.t.values):
-        imgPath = path.join(TMP_DIR, gifRootPath, f"{t}.png")
+        img_path = path.join(TMP_DIR, gif_root_path, f"{t}.png")
         if len(datacube.attrs["preview"]) == 3:
             rgb = {RGB.RED: datacube.attrs["preview"]["RED"],
                    RGB.GREEN: datacube.attrs["preview"]["GREEN"],
                    RGB.BLUE: datacube.attrs["preview"]["BLUE"]}
-            createPreviewB64(datacube, rgb,
-                             imgPath, t)
+            create_preview_b64(datacube, rgb,
+                               img_path, t)
         else:
-            createPreviewB64Cmap(datacube, datacube.attrs["preview"],
-                                 imgPath, t)
-        addTextOnWhiteBand(imgPath, t_text)
+            create_preview_b64_cmap(datacube, datacube.attrs["preview"],
+                                    img_path, t)
+        add_text_on_white_band(img_path, t_text)
 
     # Create the gif and clean-up
-    os.system(f"cd {path.join(TMP_DIR, gifRootPath)};" +
+    os.system(f"cd {path.join(TMP_DIR, gif_root_path)};" +
               "convert -delay 100 -loop 0 *.png " +
               path.join(ROOT_PATH, gif_name))
-    shutil.rmtree(f"{path.join(TMP_DIR, gifRootPath)}")
+    shutil.rmtree(f"{path.join(TMP_DIR, gif_root_path)}")
 
 
 if __name__ == "__main__":
@@ -80,18 +80,18 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
         description="Script to build gifs from datacubes")
-    parser.add_argument("-d", "--datacubePath", dest="datacubePath",
+    parser.add_argument("-d", dest="datacube_path",
                         help="Path to the datacube")
 
     args = parser.parse_args()
 
-    if args.datacubePath is None:
+    if args.datacube_path is None:
         print("[ERROR] A datacube is needed")
         exit
 
-    gifPath = f"{args.datacubePath.rstrip('/')}.gif"
+    gif_path = f"{args.datacube_path.rstrip('/')}.gif"
 
-    datacube = xr.open_zarr(args.datacubePath)
+    datacube = xr.open_zarr(args.datacube_path)
 
-    create_gif(datacube, gifPath)
-    print(f"[SUCCESS] Created the gif {gifPath}")
+    create_gif(datacube, gif_path)
+    print(f"[SUCCESS] Created the gif {gif_path}")

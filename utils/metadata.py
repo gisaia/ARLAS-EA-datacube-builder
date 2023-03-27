@@ -1,15 +1,16 @@
 import xarray as xr
 from datetime import datetime
 
-from models.request.datacube_build import DatacubeBuildRequest
+from models.request.cubeBuild import ExtendedCubeBuildRequest
 from models.metadata import HorizontalSpatialDimension, \
                             TemporalDimension, Variable, \
                             DatacubeMetadata
 from utils.enums import RGB
 
 
-def create_datacube_metadata(request: DatacubeBuildRequest,
-                             datacube: xr.Dataset, xStep, yStep):
+def create_datacube_metadata(request: ExtendedCubeBuildRequest,
+                             datacube: xr.Dataset, x_step: float | int | None,
+                             y_step: float | int | None):
     # Remove metdata created during datacube creation
     datacube.attrs = {}
 
@@ -18,14 +19,14 @@ def create_datacube_metadata(request: DatacubeBuildRequest,
         axis="x", description="",
         extent=[float(datacube.get("x").values[0]),
                 float(datacube.get("x").values[-1])],
-        step=xStep, reference_system=request.targetProjection
+        step=x_step, reference_system=request.target_projection
     )
 
     dimensions["y"] = HorizontalSpatialDimension(
         axis="y", description="",
         extent=[float(datacube.get("y").values[0]),
                 float(datacube.get("y").values[-1])],
-        step=yStep, reference_system=request.targetProjection
+        step=y_step, reference_system=request.target_projection
     )
 
     dimensions["t"] = TemporalDimension(
@@ -48,9 +49,9 @@ def create_datacube_metadata(request: DatacubeBuildRequest,
         )
 
     composition = {}
-    for rasterGroup in request.composition:
-        composition[rasterGroup.timestamp] = [
-            f.id for f in rasterGroup.rasters]
+    for raster_group in request.composition:
+        composition[raster_group.timestamp] = [
+            f.id for f in raster_group.rasters]
 
     # If all colors have been assigned, use them for the preview
     if request.rgb != {}:

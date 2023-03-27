@@ -95,7 +95,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
             "timestamp": 1671880152
         }
     ],
-    "dataCubePath": "test_theia",
+    "datacube_path": "test_theia",
     "roi": "-0.661998,42.5,0,43",
     "bands": [
         {
@@ -115,7 +115,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
             "max": 1000
         }
     ],
-    "targetResolution": 20,
+    "target_resolution": 20,
     "aliases": {
         "S2Theia": ["Sentinel2", "L2A-Theia"],
         "S2Safe": ["Sentinel2", "L2A-SAFE"],

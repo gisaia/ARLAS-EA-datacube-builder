@@ -12,85 +12,85 @@ from rasterio.warp import calculate_default_transform, reproject, \
 from rasterio.transform import IDENTITY, from_gcps
 
 
-from utils.geometry import projectPolygon
-from utils.xarray import getChunkShape
+from utils.geometry import project_polygon
+from utils.xarray import get_chunk_shape
 from utils.enums import ChunkingStrategy as CStrat
 
 
 class Raster:
 
-    def __init__(self, band: str, rasterReader: DatasetReader,
-                 targetProjection, polygon: Polygon):
+    def __init__(self, band: str, raster_reader: DatasetReader,
+                 target_projection, polygon: Polygon):
         self.band = band
-        self.dtype = rasterReader.dtypes[0].lower()
-        self.crs = targetProjection
+        self.dtype = raster_reader.dtypes[0].lower()
+        self.crs = target_projection
 
         # Extract the ROI in local referential
-        if rasterReader.crs is None:
-            rasterReader.crs = "EPSG:4326"
-        localProjectionPolygon = projectPolygon(
-                polygon, targetProjection, rasterReader.crs)
+        if raster_reader.crs is None:
+            raster_reader.crs = "EPSG:4326"
+        local_proj_polygon = project_polygon(
+                polygon, target_projection, raster_reader.crs)
 
         # Some raster files are not georeferenced with transform but with GCP
-        if rasterReader.transform == IDENTITY:
-            gcps = rasterReader.get_gcps()[0]
+        if raster_reader.transform == IDENTITY:
+            gcps = raster_reader.get_gcps()[0]
             ul = gcps[0]
-            endOfRow = math.ceil(rasterReader.bounds.right / gcps[1].col)
-            ur = gcps[endOfRow]
-            ll = gcps[- 1 - endOfRow]
+            end_of_row = math.ceil(raster_reader.bounds.right / gcps[1].col)
+            ur = gcps[end_of_row]
+            ll = gcps[- 1 - end_of_row]
             lr = gcps[-1]
 
-            rasterReader.transform = from_gcps([ul, ur, ll, lr])
+            raster_reader.transform = from_gcps([ul, ur, ll, lr])
 
-        self.rasterData, src_transform = mask(
-            rasterReader, [localProjectionPolygon], crop=True)
+        self.raster_data, src_transform = mask(
+            raster_reader, [local_proj_polygon], crop=True)
 
-        self.rasterData: np.ndarray = np.squeeze(self.rasterData)
+        self.raster_data: np.ndarray = np.squeeze(self.raster_data)
 
-        self.width = self.rasterData.shape[1]
-        self.height = self.rasterData.shape[0]
+        self.width = self.raster_data.shape[1]
+        self.height = self.raster_data.shape[0]
 
         # Find the new bounding box of the data
-        bounds = rasterReader.bounds
-        rasterPolygon = Polygon([
+        bounds = raster_reader.bounds
+        raster_polygon = Polygon([
                 (bounds.left, bounds.bottom),
                 (bounds.right, bounds.bottom),
                 (bounds.right, bounds.top),
                 (bounds.left, bounds.top),
                 (bounds.left, bounds.bottom)])
 
-        intersectionBounds = localProjectionPolygon.intersection(
-            rasterPolygon).bounds
-        self.bounds = BoundingBox(*intersectionBounds)
+        intersection_bounds = local_proj_polygon.intersection(
+            raster_polygon).bounds
+        self.bounds = BoundingBox(*intersection_bounds)
 
         # Project the raster in the target projection
         self.transform, self.width, self.height = calculate_default_transform(
-            rasterReader.crs, targetProjection,
+            raster_reader.crs, target_projection,
             self.width, self.height, *self.bounds)
 
         self.bounds = transform_bounds(
-            rasterReader.crs, targetProjection, *self.bounds)
+            raster_reader.crs, target_projection, *self.bounds)
 
-        projectedRasterData = np.zeros((self.height, self.width))
+        projected_raster_data = np.zeros((self.height, self.width))
 
-        reproject(source=self.rasterData,
-                  destination=projectedRasterData,
-                  src_crs=rasterReader.crs,
-                  src_nodata=rasterReader.nodata,
+        reproject(source=self.raster_data,
+                  destination=projected_raster_data,
+                  src_crs=raster_reader.crs,
+                  src_nodata=raster_reader.nodata,
                   src_transform=src_transform,
-                  dst_crs=targetProjection,
+                  dst_crs=target_projection,
                   dst_nodata=None,
                   dst_transform=self.transform,
                   resampling=Resampling.nearest)
-        self.rasterData = projectedRasterData
+        self.raster_data = projected_raster_data
 
         self.metadata = {}
 
-    def createZarrStore(self, zarrRootPath: str,
-                        productTimestamp: int,
-                        rasterTimestamp: int) -> zarr.DirectoryStore:
+    def create_zarr_dir(self, zarr_root_path: str,
+                        product_timestamp: int,
+                        raster_timestamp: int) -> zarr.DirectoryStore:
 
-        store = zarr.DirectoryStore(path.join(zarrRootPath, self.band))
+        store = zarr.DirectoryStore(path.join(zarr_root_path, self.band))
 
         xmin, ymin, xmax, ymax = self.bounds
         x = zarr.create(
@@ -100,7 +100,7 @@ class Raster:
             overwrite=True,
             path="x"
         )
-        x[:] = np.arange(xmin, xmax, (xmax-xmin)/self.width)
+        x[:] = np.arange(xmin, xmax, (xmax - xmin) / self.width)
         x.attrs['_ARRAY_DIMENSIONS'] = ['x']
 
         y = zarr.create(
@@ -110,7 +110,7 @@ class Raster:
             overwrite=True,
             path="y"
         )
-        y[:] = np.arange(ymin, ymax, (ymax-ymin)/self.height)
+        y[:] = np.arange(ymin, ymax, (ymax - ymin) / self.height)
         y.attrs['_ARRAY_DIMENSIONS'] = ['y']
 
         t = zarr.create(
@@ -120,16 +120,16 @@ class Raster:
             overwrite=True,
             path="t"
         )
-        t[:] = [rasterTimestamp]
+        t[:] = [raster_timestamp]
         t.attrs['_ARRAY_DIMENSIONS'] = ['t']
 
-        chunkShape = getChunkShape({"x": self.width, "y": self.height, "t": 1},
-                                   CStrat.SPINACH)
+        chunk_shape = get_chunk_shape(
+            {"x": self.width, "y": self.height, "t": 1}, CStrat.SPINACH)
 
         # Create zarr array for each band required
         zarray = zarr.create(
             shape=(self.width, self.height, 1),
-            chunks=tuple(chunkShape.values()),
+            chunks=tuple(chunk_shape.values()),
             dtype=self.dtype,
             store=store,
             overwrite=True,
@@ -138,9 +138,9 @@ class Raster:
 
         # Add band metadata to the zarr file
         zarray.attrs['_ARRAY_DIMENSIONS'] = ['x', 'y', 't']
-        self.metadata['productTimestamp'] = productTimestamp
+        self.metadata['product_timestamp'] = product_timestamp
 
-        zarray[:, :, 0] = np.flip(np.transpose(self.rasterData), 1)
+        zarray[:, :, 0] = np.flip(np.transpose(self.raster_data), 1)
 
         # Consolidate the metadata into a single .zmetadata file
         zarr.consolidate_metadata(store)

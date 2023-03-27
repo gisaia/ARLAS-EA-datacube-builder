@@ -29,8 +29,8 @@ curl -X POST -H "Content-Type: application/json" -d '{
         }
         
     ],
-    "dataCubePath": "mosaicking",
+    "datacube_path": "mosaicking",
     "roi": "-1.17,42.5,0.5,43.85",
     "bands": ["B01"],
-    "targetResolution": 20
+    "target_resolution": 20
     }' http://localhost:5000/cube/build

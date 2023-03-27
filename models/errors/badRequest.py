@@ -1,6 +1,7 @@
-from .abstractError import AbstractError
+from fastapi import HTTPException
 
 
-class BadRequest(AbstractError):
-    code = 400
-    description = "Bad request"
+class BadRequest(HTTPException):
+    def __init__(self, msg: str):
+        self.status_code = 400
+        self.detail = msg

@@ -1,39 +1,14 @@
-from flask_restx import Model, fields
+from typing import Annotated
+from fastapi import Query
+from pydantic import BaseModel
 
-RASTERPRODUCTTYPE_MODEL = Model(
-    "RasterProductType",
-    {
-        "format": fields.String(
-            required=True,
-            readonly=True,
-            description="The format of the raster product.",
-            enum=["L2A-Theia", "L2A-SAFE", "L1-Theia"]
-        ),
-        "source": fields.String(
-            required=True,
-            readonly=True,
-            description="The source of the raster product.",
-            enum=["Sentinel2", "Sentinel1"]
-        )
-    }
-)
+SOURCE_DESCRIPTION = "The source of the raster product."
+FORMAT_DESCRIPTION = "The format of the raster product."
 
 
-class RasterProductType:
-
-    def __init__(self, source, format):
-        self.source: str = source
-        self.format: str = format
-
-    def __repr__(self):
-        return str(self.as_dict())
-
-    def as_dict(self):
-        rasterProductType = {}
-        rasterProductType["source"] = self.source
-        rasterProductType["format"] = self.format
-
-        return rasterProductType
+class RasterProductType(BaseModel):
+    source: Annotated[str, Query(description=SOURCE_DESCRIPTION)]
+    format: Annotated[str, Query(description=FORMAT_DESCRIPTION)]
 
     def __eq__(self, __o: object) -> bool:
         if type(__o) != RasterProductType:

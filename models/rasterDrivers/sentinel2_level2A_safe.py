@@ -27,21 +27,22 @@ class Sentinel2_Level2A_Safe(AbstractRasterArchive):
     PRODUCT_TYPE = RasterProductType(source="Sentinel2",
                                      format="L2A-SAFE")
 
-    def __init__(self, objectStore: AbstractObjectStore, rasterURI: str,
-                 bands: Dict[str, str], targetResolution: int,
-                 rasterTimestamp: int, zipExtractPath: str):
+    def __init__(self, object_store: AbstractObjectStore, raster_uri: str,
+                 bands: Dict[str, str], target_resolution: int,
+                 raster_timestamp: int, zip_extract_path: str):
 
-        self.rasterTimestamp = rasterTimestamp
-        self._findBandsResolution(bands, targetResolution)
-        self._extract_metadata(objectStore, rasterURI, bands, zipExtractPath)
+        self.raster_timestamp = raster_timestamp
+        self._findBandsResolution(bands, target_resolution)
+        self._extract_metadata(object_store, raster_uri,
+                               bands, zip_extract_path)
 
     def _findBandsResolution(self, bands: Dict[str, str],
-                             targetResolution: int):
+                             target_resolution: int):
         # Force the resolution to be higher than HIGH_RESOLUTION
-        self.targetResolution = max(HIGH_RESOLUTION, targetResolution)
+        self.target_resolution = max(HIGH_RESOLUTION, target_resolution)
         # Force the resolution to be at least of the most precise band
         if "B08" in bands:
-            self.targetResolution = HIGH_RESOLUTION
+            self.target_resolution = HIGH_RESOLUTION
 
         self.bandsWithResolution = {}
         for band in bands.values():
@@ -83,67 +84,67 @@ class Sentinel2_Level2A_Safe(AbstractRasterArchive):
             else:
                 raise DownloadError(f"Band '{band}' not found")
 
-        # targetResolution can not be higher than the resolutions of the bands
-        self.targetResolution = min(self.targetResolution,
-                                    min(self.bandsWithResolution.values()))
+        # target_resolution can not be higher than the resolutions of the bands
+        self.target_resolution = min(self.target_resolution,
+                                     min(self.bandsWithResolution.values()))
 
     def _bandAvailableEveryResolution(self, band):
-        if HIGH_RESOLUTION <= self.targetResolution < MED_RESOLUTION:
+        if HIGH_RESOLUTION <= self.target_resolution < MED_RESOLUTION:
             self.bandsWithResolution[band] = HIGH_RESOLUTION
-        elif self.targetResolution < LOW_RESOLUTION:
+        elif self.target_resolution < LOW_RESOLUTION:
             self.bandsWithResolution[band] = MED_RESOLUTION
         else:
             self.bandsWithResolution[band] = LOW_RESOLUTION
 
     def _bandAvailableMedAndLowResolution(self, band):
-        if self.targetResolution < LOW_RESOLUTION:
+        if self.target_resolution < LOW_RESOLUTION:
             self.bandsWithResolution[band] = MED_RESOLUTION
         else:
             self.bandsWithResolution[band] = LOW_RESOLUTION
 
-    def _extract_metadata(self, objectStore: AbstractObjectStore,
-                          rasterURI: str, bands: Dict[str, str],
-                          zipExtractPath: str):
-        self.bandsToExtract = {}
+    def _extract_metadata(self, object_store: AbstractObjectStore,
+                          raster_uri: str, bands: Dict[str, str],
+                          zip_extract_path: str):
+        self.bands_to_extract = {}
 
-        params = {'client': objectStore.client}
+        params = {'client': object_store.client}
 
-        with so.open(rasterURI, "rb", transport_params=params) as fileBytes:
-            with zipfile.ZipFile(fileBytes) as rasterZip:
-                listOfFileNames = rasterZip.namelist()
+        with so.open(raster_uri, "rb", transport_params=params) as fb:
+            with zipfile.ZipFile(fb) as raster_zip:
+                file_names = raster_zip.namelist()
                 # Extract timestamp of production of the product
-                for fileName in listOfFileNames:
-                    if re.match(r".*MTD_MSI.*\.xml", fileName):
-                        if not path.exists(zipExtractPath + fileName):
-                            rasterZip.extract(fileName, zipExtractPath)
-                        rasterZip.extract(fileName, zipExtractPath)
+                for f_name in file_names:
+                    if re.match(r".*MTD_MSI.*\.xml", f_name):
+                        if not path.exists(zip_extract_path + f_name):
+                            raster_zip.extract(f_name, zip_extract_path)
+                        raster_zip.extract(f_name, zip_extract_path)
                         metadata: etree._ElementTree = etree.parse(
-                            zipExtractPath + fileName)
+                            zip_extract_path + f_name)
                         root: etree._Element = metadata.getroot()
-                        startTime = parser.parse(root.xpath(
+                        start_time = parser.parse(root.xpath(
                             PRODUCT_START_TIME, namespaces=root.nsmap)[0].text)
 
-                        endTime = parser.parse(root.xpath(
+                        end_time = parser.parse(root.xpath(
                             PRODUCT_STOP_TIME, namespaces=root.nsmap)[0].text)
 
-                        self.productTime = int(
-                            (datetime.timestamp(startTime)
-                             + datetime.timestamp(endTime)) / 2)
+                        self.product_time = int(
+                            (datetime.timestamp(start_time)
+                             + datetime.timestamp(end_time)) / 2)
                         break
 
-                for datacubeBand, productBand in bands.items():
-                    bandResolution = self.bandsWithResolution[productBand]
-                    for fileName in listOfFileNames:
-                        if re.match(rf".*/IMG_DATA/R{bandResolution}m/" +
-                                    rf".*{productBand}_{bandResolution}m\.jp2",
-                                    fileName):
+                for datacube_band, product_band in bands.items():
+                    bandResolution = self.bandsWithResolution[product_band]
+                    for f_name in file_names:
+                        if re.match(rf".*/IMG_DATA/R{bandResolution}m/.*" +
+                                    rf"{product_band}_{bandResolution}m\.jp2",
+                                    f_name):
 
-                            if not path.exists(zipExtractPath + fileName):
-                                rasterZip.extract(fileName, zipExtractPath)
+                            if not path.exists(zip_extract_path + f_name):
+                                raster_zip.extract(f_name, zip_extract_path)
 
-                            self.bandsToExtract[datacubeBand] = path.join(
-                                zipExtractPath, fileName)
+                            self.bands_to_extract[datacube_band] = path.join(
+                                zip_extract_path, f_name)
 
-                if len(bands) != len(self.bandsToExtract):
+                if len(bands) != len(self.bands_to_extract):
                     raise DownloadError("Some of the required files " +
                                         "were not found")

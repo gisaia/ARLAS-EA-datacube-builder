@@ -12,14 +12,15 @@ from utils.enums import RGB
 FONT = "./configs/Roboto-Light.ttf"
 
 
-def _bandTo256(dataset: xr.Dataset, band: str, xfactor, yfactor, timeSlice):
+def __band_to_256px(dataset: xr.Dataset, band: str,
+                    x_factor: int, y_factor: int, time_slice: int):
     """
     Put a band values between 0 and 255
     """
-    band: xr.DataArray = dataset[band].sel(t=timeSlice)
+    band: xr.DataArray = dataset[band].sel(t=time_slice)
 
     """ Change the resolution """
-    band = band.coarsen({"x": xfactor, "y": yfactor}, boundary="pad").mean()
+    band = band.coarsen({"x": x_factor, "y": y_factor}, boundary="pad").mean()
 
     """ Clip the 2% of highest and lowest values """
     min, max = band.chunk({"x": -1, "y": -1}) \
@@ -32,21 +33,21 @@ def _bandTo256(dataset: xr.Dataset, band: str, xfactor, yfactor, timeSlice):
     return band.transpose().reindex(y=band.y[::-1])
 
 
-def createPreviewB64(dataset: xr.Dataset, bands: Dict[RGB, str],
-                     previewPath: str, timeSlice=None):
+def create_preview_b64(dataset: xr.Dataset, bands: Dict[RGB, str],
+                       preview_path: str, time_slice=None):
     """
     Create a 256x256 preview of datacube and convert it to base64
     """
-    if timeSlice is None:
-        timeSlice = dataset.t.values[-1]
+    if time_slice is None:
+        time_slice = dataset.t.values[-1]
     # We want a 256x256 pic
     xfactor = len(dataset.x) // 256
     yfactor = len(dataset.y) // 256
 
     overview_data = xr.Dataset()
     for color, band in bands.items():
-        overview_data[color.value] = _bandTo256(
-            dataset, band, xfactor, yfactor, timeSlice)
+        overview_data[color.value] = __band_to_256px(
+            dataset, band, xfactor, yfactor, time_slice)
 
     # Cut the x and y to have 256x256
     xlen = len(overview_data.x)
@@ -55,27 +56,28 @@ def createPreviewB64(dataset: xr.Dataset, bands: Dict[RGB, str],
         x=slice(int((xlen-256)/2), int((xlen+256)/2)),
         y=slice(int((ylen-256)/2), int((ylen+256)/2)))
 
-    overview_data.rio.to_raster(f"{previewPath}", driver="PNG")
+    overview_data.rio.to_raster(f"{preview_path}", driver="PNG")
     overview_data.close()
     del overview_data
 
     # encode in base64
-    with open(previewPath, 'rb') as fb:
-        base64Image = base64.b64encode(fb.read()).decode('utf-8')
+    with open(preview_path, 'rb') as fb:
+        b64_image = base64.b64encode(fb.read()).decode('utf-8')
 
-    return base64Image
+    return b64_image
 
 
-def createPreviewB64Cmap(dataset: xr.Dataset, preview: Dict[str, str],
-                         previewPath: str, timeSlice=None):
-    if timeSlice is None:
-        timeSlice = dataset.t.values[-1]
+def create_preview_b64_cmap(dataset: xr.Dataset, preview: Dict[str, str],
+                            preview_path: str, time_slice=None):
+    if time_slice is None:
+        time_slice = dataset.t.values[-1]
     cmap, band = list(preview.items())[0]
     # We want a 256x256 pic
-    xfactor = len(dataset.x) // 256
-    yfactor = len(dataset.y) // 256
+    x_factor = len(dataset.x) // 256
+    y_factor = len(dataset.y) // 256
 
-    data = _bandTo256(dataset, band, xfactor, yfactor, timeSlice).values
+    data = __band_to_256px(dataset, band,
+                           x_factor, y_factor, time_slice).values
 
     # Cut the x and y to have 256x256
     xlen = data.shape[0]
@@ -84,16 +86,16 @@ def createPreviewB64Cmap(dataset: xr.Dataset, preview: Dict[str, str],
                 int((ylen-256)/2):int((ylen+256)/2)]
 
     img = Image.fromarray(cm.get_cmap(cmap)(data, bytes=True))
-    img.save(previewPath)
+    img.save(preview_path)
 
     # encode in base64
-    with open(previewPath, 'rb') as fb:
-        base64Image = base64.b64encode(fb.read()).decode('utf-8')
+    with open(preview_path, 'rb') as fb:
+        b64_image = base64.b64encode(fb.read()).decode('utf-8')
 
-    return base64Image
+    return b64_image
 
 
-def addTextOnWhiteBand(imgPath: str, text: str):
+def add_text_on_white_band(imgPath: str, text: str):
     img = Image.open(imgPath)
     font = ImageFont.truetype(FONT)
 

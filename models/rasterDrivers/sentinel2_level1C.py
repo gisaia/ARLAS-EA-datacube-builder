@@ -13,35 +13,38 @@ PRODUCT_STOP_TIME = "n1:General_Info/Product_Info/PRODUCT_STOP_TIME"
 
 class Sentinel2_Level1C(AbstractRasterArchive):
 
-    def __init__(self, rasterPath, bands, zipExtractPath="tmp/"):
-        self._extract_metadata(rasterPath, bands, zipExtractPath)
+    def __init__(self, raster_path, bands, zip_extract_path="tmp/"):
+        self._extract_metadata(raster_path, bands, zip_extract_path)
 
-    def _extract_metadata(self, rasterPath, bands, zipExtractPath):
-        self.bandsToExtract = []
+    def _extract_metadata(self, raster_path, bands, zip_extract_path):
+        self.bands_to_extract = []
 
-        if rasterPath[-4:] != ".zip":
+        if raster_path[-4:] != ".zip":
             raise FileNotFoundError("File does not have the expected format")
 
-        with ZipFile(rasterPath, "r") as zipObj:
-            listOfFileNames = zipObj.namelist()
+        with ZipFile(raster_path, "r") as zipObj:
+            file_names = zipObj.namelist()
             # Extract timestamp of production of the product
-            for fileName in listOfFileNames:
-                if re.match(r".*MTD_MSI.*\.xml", fileName):
-                    zipObj.extract(fileName, zipExtractPath)
+            for f_name in file_names:
+                if re.match(r".*MTD_MSI.*\.xml", f_name):
+                    zipObj.extract(f_name, zip_extract_path)
                     metadata: etree._ElementTree = etree.parse(
-                        zipExtractPath + fileName)
+                        zip_extract_path + f_name)
                     root: etree._Element = metadata.getroot()
-                    startTime = parser.parse(root.xpath(
+                    start_time = parser.parse(root.xpath(
                         PRODUCT_START_TIME, namespaces=root.nsmap)[0].text)
 
-                    endTime = parser.parse(root.xpath(
+                    end_time = parser.parse(root.xpath(
                         PRODUCT_STOP_TIME, namespaces=root.nsmap)[0].text)
 
-                    self.productTime = int((datetime.timestamp(startTime)
-                                            + datetime.timestamp(endTime)) / 2)
+                    self.product_time = int(
+                        (datetime.timestamp(start_time)
+                         + datetime.timestamp(end_time)) / 2)
+                    break
 
             for band in bands:
-                for fileName in listOfFileNames:
-                    if re.match(r".*/IMG_DATA/.*" + band + r"\.jp2", fileName):
-                        zipObj.extract(fileName, zipExtractPath)
-                        self.bandsToExtract.append(zipExtractPath + fileName)
+                for f_name in file_names:
+                    if re.match(r".*/IMG_DATA/.*" + band + r"\.jp2", f_name):
+                        zipObj.extract(f_name, zip_extract_path)
+                        self.bands_to_extract.append(
+                            zip_extract_path + f_name)

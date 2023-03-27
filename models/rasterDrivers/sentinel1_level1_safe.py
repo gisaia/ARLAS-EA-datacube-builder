@@ -15,7 +15,7 @@ from models.errors import DownloadError
 from .abstractRasterArchive import AbstractRasterArchive
 
 PRODUCT_START_TIME = "metadataSection/metadataObject/metadataWrap/xmlData/" + \
-    "safe:acquisitionPeriod/safe:startTime"
+    "safe:acquisitionPeriod/safe:start_time"
 PRODUCT_STOP_TIME = "metadataSection/metadataObject/metadataWrap/xmlData/" + \
     "safe:acquisitionPeriod/safe:stopTime"
 
@@ -24,16 +24,17 @@ class Sentinel1_Level1_Safe(AbstractRasterArchive):
     PRODUCT_TYPE = RasterProductType(source="Sentinel1",
                                      format="L1-SAFE")
 
-    def __init__(self, objectStore: AbstractObjectStore, rasterURI: str,
-                 bands: Dict[str, str], targetResolution: int,
-                 rasterTimestamp: int, zipExtractPath: str):
+    def __init__(self, object_store: AbstractObjectStore, raster_uri: str,
+                 bands: Dict[str, str], target_resolution: int,
+                 raster_timestamp: int, zip_extract_path: str):
 
-        self.rasterTimestamp = rasterTimestamp
-        self.targetResolution = targetResolution
-        self._checkBands(bands)
-        self._extract_metadata(objectStore, rasterURI, bands, zipExtractPath)
+        self.raster_timestamp = raster_timestamp
+        self.target_resolution = target_resolution
+        self.__check_bands(bands)
+        self._extract_metadata(object_store, raster_uri,
+                               bands, zip_extract_path)
 
-    def _checkBands(self, bands: Dict[str, str]):
+    def __check_bands(self, bands: Dict[str, str]):
         for band in bands.values():
             if band == "grd-hh":
                 continue
@@ -46,47 +47,47 @@ class Sentinel1_Level1_Safe(AbstractRasterArchive):
             else:
                 raise DownloadError(f"Band '{band}' not found")
 
-    def _extract_metadata(self, objectStore: AbstractObjectStore,
-                          rasterURI: str, bands: Dict[str, str],
-                          zipExtractPath: str):
-        self.bandsToExtract = {}
+    def _extract_metadata(self, object_store: AbstractObjectStore,
+                          raster_uri: str, bands: Dict[str, str],
+                          zip_extract_path: str):
+        self.bands_to_extract = {}
 
-        params = {'client': objectStore.client}
+        params = {'client': object_store.client}
 
-        with so.open(rasterURI, "rb", transport_params=params) as fileBytes:
-            with zipfile.ZipFile(fileBytes) as rasterZip:
-                listOfFileNames = rasterZip.namelist()
+        with so.open(raster_uri, "rb", transport_params=params) as fb:
+            with zipfile.ZipFile(fb) as raster_zip:
+                file_names = raster_zip.namelist()
                 # Extract timestamp of production of the product
-                for fileName in listOfFileNames:
-                    if re.match(r".*/manifest\.safe", fileName):
-                        if not path.exists(zipExtractPath + fileName):
-                            rasterZip.extract(fileName, zipExtractPath)
-                        rasterZip.extract(fileName, zipExtractPath)
+                for f_name in file_names:
+                    if re.match(r".*/manifest\.safe", f_name):
+                        if not path.exists(zip_extract_path + f_name):
+                            raster_zip.extract(f_name, zip_extract_path)
+                        raster_zip.extract(f_name, zip_extract_path)
                         metadata: etree._ElementTree = etree.parse(
-                            zipExtractPath + fileName)
+                            zip_extract_path + f_name)
                         root: etree._Element = metadata.getroot()
-                        startTime = parser.parse(root.xpath(
+                        start_time = parser.parse(root.xpath(
                             PRODUCT_START_TIME, namespaces=root.nsmap)[0].text)
 
-                        endTime = parser.parse(root.xpath(
+                        end_time = parser.parse(root.xpath(
                             PRODUCT_STOP_TIME, namespaces=root.nsmap)[0].text)
 
-                        self.productTime = int(
-                            (datetime.timestamp(startTime)
-                             + datetime.timestamp(endTime)) / 2)
+                        self.product_time = int(
+                            (datetime.timestamp(start_time)
+                             + datetime.timestamp(end_time)) / 2)
                         break
 
-                for datacubeBand, productBand in bands.items():
-                    for fileName in listOfFileNames:
-                        if re.match(rf".*/measurement/.*{productBand}.*\.tiff",
-                                    fileName):
+                for datacube_band, product_band in bands.items():
+                    for f_name in file_names:
+                        if re.match(r".*/measurement/.*" +
+                                    rf"{product_band}.*\.tiff", f_name):
 
-                            if not path.exists(zipExtractPath + fileName):
-                                rasterZip.extract(fileName, zipExtractPath)
+                            if not path.exists(zip_extract_path + f_name):
+                                raster_zip.extract(f_name, zip_extract_path)
 
-                            self.bandsToExtract[datacubeBand] = path.join(
-                                zipExtractPath, fileName)
+                            self.bands_to_extract[datacube_band] = path.join(
+                                zip_extract_path, f_name)
 
-                if len(bands) != len(self.bandsToExtract):
+                if len(bands) != len(self.bands_to_extract):
                     raise DownloadError("Some of the required files " +
                                         "were not found")

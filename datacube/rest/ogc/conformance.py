@@ -6,7 +6,9 @@ ROUTER = APIRouter()
 ROOT_CONFORMANCE = "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf"
 
 
-@ROUTER.get("/conformance", response_model_exclude_none=True)
+@ROUTER.get("/conformance",
+            response_model=Conforms,
+            response_model_exclude_none=True)
 def get_conformance() -> Conforms:
     return Conforms(
         conformsTo=[

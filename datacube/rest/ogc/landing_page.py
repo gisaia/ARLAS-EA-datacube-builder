@@ -6,7 +6,9 @@ from datacube.rest.serverConfiguration import ServerConfiguration
 ROUTER = APIRouter()
 
 
-@ROUTER.get("/", response_model_exclude_none=True)
+@ROUTER.get("/",
+            response_model=LandingPage,
+            response_model_exclude_none=True)
 def get_landing_page() -> LandingPage:
     server_root = ServerConfiguration.get_server_root()
 

@@ -9,7 +9,7 @@ from dateutil import parser
 from lxml import etree
 
 from datacube.core.object_store.drivers.abstract import AbstractObjectStore
-from datacube.core.models.request.rasterProductType import RasterProductType
+from datacube.core.models.request.rasterProductType import RasterType
 from datacube.core.models.errors import DownloadError
 from datacube.core.rasters.drivers.abstract import AbstractRasterArchive
 
@@ -20,8 +20,8 @@ RESOLUTION = 20  # m
 
 
 class TheiaSnow(AbstractRasterArchive):
-    PRODUCT_TYPE = RasterProductType(source="Theia",
-                                     format="Snow")
+    PRODUCT_TYPE = RasterType(source="Theia",
+                              format="Snow")
 
     def __init__(self, object_store: AbstractObjectStore, raster_uri: str,
                  bands: Dict[str, str], target_resolution: int,

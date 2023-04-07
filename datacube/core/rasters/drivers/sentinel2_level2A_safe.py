@@ -9,7 +9,7 @@ from dateutil import parser
 from lxml import etree
 
 from datacube.core.object_store.drivers.abstract import AbstractObjectStore
-from datacube.core.models.request.rasterProductType import RasterProductType
+from datacube.core.models.request.rasterProductType import RasterType
 from datacube.core.models.errors import DownloadError
 from datacube.core.rasters.drivers.abstract import AbstractRasterArchive
 
@@ -23,8 +23,8 @@ LOW_RESOLUTION = 60
 
 
 class Sentinel2_Level2A_Safe(AbstractRasterArchive):
-    PRODUCT_TYPE = RasterProductType(source="Sentinel2",
-                                     format="L2A-SAFE")
+    PRODUCT_TYPE = RasterType(source="Sentinel2",
+                              format="L2A-SAFE")
 
     def __init__(self, object_store: AbstractObjectStore, raster_uri: str,
                  bands: Dict[str, str], target_resolution: int,

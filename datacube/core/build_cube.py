@@ -227,7 +227,7 @@ def __build_datacube(request: ExtendedCubeBuildRequest):
     # Compute the bands requested from the product bands
     for band in request.bands:
         datacube[band.name] = eval(
-            get_eval_formula(band.value, request.product_aliases))
+            get_eval_formula(band.value, request.aliases))
         if band.min is not None and band.max is not None:
             datacube[band.name] = datacube[band.name].clip(band.min, band.max)
 

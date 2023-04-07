@@ -7,14 +7,14 @@ import re
 from dateutil import parser
 
 from datacube.core.object_store.drivers.abstract import AbstractObjectStore
-from datacube.core.models.request.rasterProductType import RasterProductType
+from datacube.core.models.request.rasterProductType import RasterType
 from datacube.core.models.errors import DownloadError
 from datacube.core.rasters.drivers.abstract import AbstractRasterArchive
 
 
 class Sentinel1_Theia(AbstractRasterArchive):
-    PRODUCT_TYPE = RasterProductType(source="Sentinel1",
-                                     format="Theia")
+    PRODUCT_TYPE = RasterType(source="Sentinel1",
+                              format="Theia")
 
     def __init__(self, object_store: AbstractObjectStore, raster_uri: str,
                  bands: Dict[str, str], target_resolution: int,

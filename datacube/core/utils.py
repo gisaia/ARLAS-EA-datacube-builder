@@ -1,28 +1,28 @@
-from typing import Dict, List, Type, Match
 import re
+from typing import Dict, List, Match, Type
 
-from datacube.core.models.request.cubeBuild import ExtendedCubeBuildRequest
-from datacube.core.models.request.rasterProductType import RasterProductType
 from datacube.core.models.errors import BadRequest
-from datacube.core.rasters.drivers import AbstractRasterArchive, \
-                                          Sentinel2_Level2A_Safe, \
-                                          Sentinel2_Level2A_Theia, \
-                                          Sentinel1_Theia, \
-                                          Sentinel1_Level1_Safe, \
-                                          TheiaSnow
+from datacube.core.models.request.cubeBuild import ExtendedCubeBuildRequest
+from datacube.core.models.request.rasterProductType import (AliasedRasterType,
+                                                            RasterType)
+from datacube.core.rasters.drivers import (AbstractRasterArchive,
+                                           Sentinel1_Level1_Safe,
+                                           Sentinel1_Theia,
+                                           Sentinel2_Level2A_Safe,
+                                           Sentinel2_Level2A_Theia, TheiaSnow)
 
 
 def get_product_bands(request: ExtendedCubeBuildRequest,
-                      product_type: RasterProductType) -> Dict[str, str]:
+                      product_type: RasterType) -> Dict[str, str]:
     """
     Based on the request, creates a dictionnary with the pair
     (datacube name, band name) as (key, value)
     """
     # Extract from the request which bands are required
     alias_product = ""
-    for k, v in request.product_aliases.items():
-        if v == product_type:
-            alias_product = k
+    for alias in request.aliases:
+        if RasterType(**alias.dict()) == product_type:
+            alias_product = alias.alias
             break
     if alias_product == "":
         raise Exception(f"No alias given for product type {product_type}")
@@ -38,13 +38,13 @@ def get_product_bands(request: ExtendedCubeBuildRequest,
     return product_bands
 
 
-def get_eval_formula(band_value: str, aliases: Dict[str, List[str]]) -> str:
+def get_eval_formula(band_value: str, aliases: List[AliasedRasterType]) -> str:
     def repl(match: Match[str]) -> str:
         for m in match.groups():
             return f"datacube.get('{m}')"
 
     result = band_value
-    for alias in aliases.keys():
+    for alias in map(lambda a: a.alias, aliases):
         result = re.sub(rf"({alias}\.[a-zA-Z0-9]*)", repl, result)
 
     return result

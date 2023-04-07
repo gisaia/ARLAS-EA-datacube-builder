@@ -22,25 +22,28 @@ Docker or python3
 
 ## Running ARLAS-datacube-builder with python
 
-To start the service with python, execute the `app.py` file with the following optional options:
-- `--debug`: launch the debug mode
-- `--host HOST_IP`: set the host IP of the service, by default `127.0.0.1`
-- `--port PORT`: set the port of the service, by default `5000`
+To start the service with python, execute the `app.py` file.
+Parameters can be set with the file `configs/app.conf.yml`, that has the following values by default:
 
-In order to be able to access Object Stores, an `env.sh` file must be created to set the global variables used.
+```yaml
+app:
+  host: "localhost"
+  port: 5000
+  debug: True
+```
 
-```shell
-#!/bin/sh
+In order to be able to access Object Stores, an `credentials` file must be created to set the global variables used.
 
-export GS_INPUT_BUCKET=
-export GS_INPUT_PRIVATE_KEY_ID=
-export GS_INPUT_PRIVATE_KEY=
-export GS_INPUT_CLIENT_EMAIL=
+```yaml
+GS_INPUT_BUCKET=
+GS_INPUT_PRIVATE_KEY_ID=
+GS_INPUT_PRIVATE_KEY=
+GS_INPUT_CLIENT_EMAIL=
 
-export GS_OUTPUT_BUCKET=
-export GS_OUTPUT_PRIVATE_KEY_ID=
-export GS_OUTPUT_PRIVATE_KEY=
-export GS_OUTPUT_CLIENT_EMAIL=
+GS_OUTPUT_BUCKET=
+GS_OUTPUT_PRIVATE_KEY_ID=
+GS_OUTPUT_PRIVATE_KEY=
+GS_OUTPUT_CLIENT_EMAIL=
 ```
 
 The script `scripts/start-app.sh` is available as an example of how to launch the service.

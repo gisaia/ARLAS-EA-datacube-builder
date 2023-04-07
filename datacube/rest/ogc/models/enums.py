@@ -28,6 +28,7 @@ class ObjectType(enum.Enum):
 class ExceptionType(enum.Enum):
     URI_NOT_FOUND = "The requested URI was not found."
     SERVER_ERROR = "A server error occurred."
+    NOT_IMPLEMENTED = "The endpoint is not implemented."
 
 
 class JobType(enum.Enum):

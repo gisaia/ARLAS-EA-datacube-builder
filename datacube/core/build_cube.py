@@ -13,7 +13,8 @@ import smart_open as so
 import mr4mp
 import concurrent.futures
 
-from datacube.core.models.request.cubeBuild import ExtendedCubeBuildRequest
+from datacube.core.models.request.cubeBuild import CubeBuildRequest, \
+    ExtendedCubeBuildRequest
 
 from datacube.core.models.cubeBuildResult import CubeBuildResult
 from datacube.core.models.errors import DownloadError, \
@@ -284,11 +285,12 @@ def __build_datacube(request: ExtendedCubeBuildRequest):
         preview=preview)
 
 
-def build_datacube(request: ExtendedCubeBuildRequest) -> CubeBuildResult:
+def build_datacube(request: CubeBuildRequest) -> CubeBuildResult:
 
     try:
         with concurrent.futures.ProcessPoolExecutor() as executor:
-            f = executor.submit(__build_datacube, request)
+            f = executor.submit(__build_datacube,
+                                ExtendedCubeBuildRequest(request))
             result = f.result()
     except Exception as e:
         raise e

@@ -1,9 +1,10 @@
 import json
 
+from fastapi.responses import JSONResponse
 from jsonref import replace_refs
 from pydantic import BaseModel
 
-from datacube.rest.ogc.models import (InputDescription,
+from datacube.rest.ogc.models import (InputDescription, OGCException,
                                       OutputDescription)
 
 
@@ -47,3 +48,14 @@ def base_model2description(model: type[BaseModel]) \
     with open("test_parse.json", "w") as f:
         json.dump(description, f, indent=2)
     return description
+
+
+def json_http_error(status: int, type: str, title: str | None = None,
+                    detail: str | None = None, instance: str | None = None):
+    return JSONResponse(status_code=status,
+                        content=OGCException(
+                            type=type,
+                            title=title,
+                            status=status,
+                            detail=detail,
+                            instance=instance).dict())

@@ -40,3 +40,17 @@ class StatusCode(enum.Enum):
     successful: str = "successful"
     failed: str = "failed"
     dismissed: str = "dismissed"
+
+
+class Response(enum.Enum):
+    raw = "raw"
+    document = "document"
+
+
+class Crs(enum.Enum):
+    http___www_opengis_net_def_crs_OGC_1_3_CRS84 = (
+        "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+    )
+    http___www_opengis_net_def_crs_OGC_0_CRS84h = (
+        "http://www.opengis.net/def/crs/OGC/0/CRS84h"
+    )

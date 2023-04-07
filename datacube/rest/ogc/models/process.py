@@ -29,3 +29,4 @@ class ProcessDescription(ProcessSummary):
 class ProcessListItem(BaseModel):
     process: ProcessDescription
     method: Callable
+    input_model: type

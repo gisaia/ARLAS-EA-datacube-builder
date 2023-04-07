@@ -3,11 +3,13 @@ from fastapi import APIRouter, status
 from datacube.core.build_cube import build_datacube
 from datacube.core.models.cubeBuildResult import CubeBuildResult
 from datacube.core.models.request.cubeBuild import CubeBuildRequest
-from datacube.rest.ogc.models import (ExceptionType, JobControlOptions, Link,
-                                      OGCException, ProcessDescription,
-                                      ProcessList, ProcessListItem,
-                                      ProcessSummary, TransmissionMode)
-from datacube.rest.ogc.utils import base_model2description, json_http_error
+from datacube.rest.ogc.models import (ExceptionType, Execute,
+                                      JobControlOptions, Link, OGCException,
+                                      ProcessDescription, ProcessList,
+                                      ProcessListItem, ProcessSummary,
+                                      TransmissionMode)
+from datacube.rest.ogc.utils import (base_model2description, execute2inputs,
+                                     json_http_error)
 from datacube.rest.serverConfiguration import ServerConfiguration
 
 ROUTER = APIRouter()
@@ -25,7 +27,9 @@ DC3_BUILDER_PROCESS = ProcessDescription(
 
 PROCESSES: dict[str, ProcessListItem] = {
     DC3_BUILDER_PROCESS.id: ProcessListItem(
-        process=DC3_BUILDER_PROCESS, method=build_datacube)
+        process=DC3_BUILDER_PROCESS,
+        method=build_datacube,
+        input_model=CubeBuildRequest)
 }
 
 
@@ -69,3 +73,15 @@ def get_process_summary(process_id: str):
                                ExceptionType.URI_NOT_FOUND.value,
                                detail=f"'{process_id}' is not a valid id.")
     return PROCESSES[process_id].process
+
+
+@ROUTER.post("/processes/{process_id}/execute",
+             response_model_exclude_none=True)
+def post_process_execute(process_id: str, execute: Execute):
+    if process_id not in PROCESSES.keys():
+        return json_http_error(status.HTTP_404_NOT_FOUND,
+                               ExceptionType.URI_NOT_FOUND.value,
+                               detail=f"'{process_id}' is not a valid id.")
+    process = PROCESSES[process_id]
+
+    return process.method(process.input_model(**execute2inputs(execute)))

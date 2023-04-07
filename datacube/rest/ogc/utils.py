@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from datacube.rest.ogc.models import (InputDescription, OGCException,
                                       OutputDescription)
+from datacube.rest.ogc.models.execute import BinaryInputValue, Execute, Bbox
 
 
 def base_model2description(model: type[BaseModel]) \
@@ -59,3 +60,13 @@ def json_http_error(status: int, type: str, title: str | None = None,
                             status=status,
                             detail=detail,
                             instance=instance).dict())
+
+
+def execute2inputs(execute: Execute):
+    result = {}
+    for key, input in execute.inputs.items():
+        if isinstance(input.__root__.__root__, BinaryInputValue | Bbox):
+            result[key] = input.__root__.__root__.__root__
+        else:
+            result[key] = input.__root__.__root__
+    return result

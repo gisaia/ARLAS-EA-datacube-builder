@@ -2,7 +2,6 @@ import os.path as path
 import re
 import zipfile
 from datetime import datetime
-from typing import Dict
 import smart_open as so
 from dateutil import parser
 from lxml import etree
@@ -23,7 +22,7 @@ class Sentinel1_Level1_Safe(AbstractRasterArchive):
                               format="L1-SAFE")
 
     def __init__(self, object_store: AbstractObjectStore, raster_uri: str,
-                 bands: Dict[str, str], target_resolution: int,
+                 bands: dict[str, str], target_resolution: int,
                  raster_timestamp: int, zip_extract_path: str):
 
         self.raster_timestamp = raster_timestamp
@@ -32,7 +31,7 @@ class Sentinel1_Level1_Safe(AbstractRasterArchive):
         self._extract_metadata(object_store, raster_uri,
                                bands, zip_extract_path)
 
-    def __check_bands(self, bands: Dict[str, str]):
+    def __check_bands(self, bands: dict[str, str]):
         for band in bands.values():
             if band == "grd-hh":
                 continue
@@ -46,7 +45,7 @@ class Sentinel1_Level1_Safe(AbstractRasterArchive):
                 raise DownloadError(f"Band '{band}' not found")
 
     def _extract_metadata(self, object_store: AbstractObjectStore,
-                          raster_uri: str, bands: Dict[str, str],
+                          raster_uri: str, bands: dict[str, str],
                           zip_extract_path: str):
         self.bands_to_extract = {}
 

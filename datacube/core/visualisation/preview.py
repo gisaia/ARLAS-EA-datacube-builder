@@ -2,7 +2,6 @@ import xarray as xr
 import base64
 # Apparently necessary for the .rio to work
 import rioxarray
-from typing import Dict
 
 from PIL import Image, ImageFont, ImageDraw
 from matplotlib import cm
@@ -33,7 +32,7 @@ def __resize_band(dataset: xr.Dataset, band: str, x_factor: int,
     return band.transpose().reindex(y=band.y[::-1])
 
 
-def create_preview_b64(dataset: xr.Dataset, bands: Dict[RGB, str],
+def create_preview_b64(dataset: xr.Dataset, bands: dict[RGB, str],
                        preview_path: str, time_slice=None,
                        size: list[int] = [256, 256]):
     """
@@ -68,7 +67,7 @@ def create_preview_b64(dataset: xr.Dataset, bands: Dict[RGB, str],
     return b64_image
 
 
-def create_preview_b64_cmap(dataset: xr.Dataset, preview: Dict[str, str],
+def create_preview_b64_cmap(dataset: xr.Dataset, preview: dict[str, str],
                             preview_path: str, time_slice=None,
                             size: list[int] = [256, 256]):
     if time_slice is None:

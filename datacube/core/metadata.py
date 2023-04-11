@@ -54,7 +54,7 @@ def create_datacube_metadata(request: ExtendedCubeBuildRequest,
             f.id for f in raster_group.rasters]
 
     # If all colors have been assigned, use them for the preview
-    if request.rgb != {}:
+    if len(request.rgb) == 3:
         preview = {"RED": request.rgb[RGB.RED],
                    "GREEN": request.rgb[RGB.GREEN],
                    "BLUE": request.rgb[RGB.BLUE]}
@@ -67,4 +67,4 @@ def create_datacube_metadata(request: ExtendedCubeBuildRequest,
                 break
 
     metadata = DatacubeMetadata(dimensions, variables, composition, preview)
-    return datacube.assign_attrs(metadata.as_dict())
+    return datacube.assign_attrs(metadata.dict())

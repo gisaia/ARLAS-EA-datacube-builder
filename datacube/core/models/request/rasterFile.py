@@ -1,6 +1,4 @@
-from typing import Annotated
-from fastapi import Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from datacube.core.models.request.rasterProductType import RasterType
 
@@ -11,6 +9,6 @@ ID_DESCRIPTION = "Identifier for the raster file, " + \
 
 
 class RasterFile(BaseModel):
-    type: Annotated[RasterType, Query(description=TYPE_DESCRIPTION)]
-    path: Annotated[str, Query(description=PATH_DESCRIPTION)]
-    id: Annotated[str, Query(description=ID_DESCRIPTION)]
+    type: RasterType = Field(description=TYPE_DESCRIPTION)
+    path: str = Field(description=PATH_DESCRIPTION)
+    id: str = Field(description=ID_DESCRIPTION)

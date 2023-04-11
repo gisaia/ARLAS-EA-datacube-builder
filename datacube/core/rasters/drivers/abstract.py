@@ -1,6 +1,5 @@
 import abc
 from dataclasses import dataclass
-from typing import Dict
 
 import os.path as path
 import os
@@ -20,14 +19,14 @@ FINAL = "final"
 
 @dataclass
 class AbstractRasterArchive(abc.ABC):
-    bands_to_extract: Dict[str, str]
+    bands_to_extract: dict[str, str]
     product_time: int
     target_resolution: float
     raster_timestamp: int
 
     @abc.abstractmethod
     def __init__(self, object_store: AbstractObjectStore, raster_uri: str,
-                 bands: Dict[str, str], target_resolution: int,
+                 bands: dict[str, str], target_resolution: int,
                  raster_timestamp: int, zip_extract_path: str):
         pass
 

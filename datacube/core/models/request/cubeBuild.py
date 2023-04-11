@@ -1,7 +1,4 @@
-from typing import Annotated, Dict, List
-
-from fastapi import Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from shapely.geometry import Polygon
 
 from datacube.core.geo.utils import roi2geometry
@@ -31,29 +28,22 @@ CHUNKING_DESCRIPTION = "Defines how we want the datacube to be chunked, " + \
 
 
 class CubeBuildRequest(BaseModel):
-    composition: Annotated[
-        List[RasterGroup], Query(description=COMPOSITION_DESCRIPTION)]
-    datacube_path: Annotated[
-        str, Query(description=DATACUBEPATH_DESCRIPTION)]
-    bands: Annotated[
-        List[Band], Query(description=BANDS_DESCRIPTION)]
-    aliases: Annotated[
-        List[AliasedRasterType], Query(description=ALIASES_DESCRIPTION)]
-    roi: Annotated[
-        str, Query(description=ROI_DESCRIPTION)]
-    target_resolution: Annotated[
-        int, Query(description=RESOLUTION_DESCRIPTION, gt=0)] = 10
-    target_projection: Annotated[
-        str, Query(description=PROJECTION_DESCRIPTION)] = "EPSG:4326"
-    chunking_strategy: Annotated[
-        CStrat, Query(description=CHUNKING_DESCRIPTION)] = CStrat.POTATO
+    composition: list[RasterGroup] = Field(description=COMPOSITION_DESCRIPTION)
+    datacube_path: str = Field(description=DATACUBEPATH_DESCRIPTION)
+    bands: list[Band] = Field(description=BANDS_DESCRIPTION)
+    aliases: list[AliasedRasterType] = Field(description=ALIASES_DESCRIPTION)
+    roi: str = Field(description=ROI_DESCRIPTION)
+    target_resolution: int = Field(default=10,
+                                   description=RESOLUTION_DESCRIPTION, gt=0)
+    target_projection: str = Field(default="EPSG:4326",
+                                   description=PROJECTION_DESCRIPTION)
+    chunking_strategy: CStrat = Field(default=CStrat.POTATO,
+                                      description=CHUNKING_DESCRIPTION)
 
 
 class ExtendedCubeBuildRequest(CubeBuildRequest, arbitrary_types_allowed=True):
-    roi_polygon: Annotated[
-        Polygon, None] = Polygon()
-    rgb: Annotated[
-        Dict[RGB, str], None] = {}
+    roi_polygon: Polygon = Field(default=Polygon())
+    rgb: dict[RGB, str] = Field(default={})
 
     def __init__(self, request: CubeBuildRequest):
         super().__init__(**request.dict())
@@ -77,7 +67,7 @@ class ExtendedCubeBuildRequest(CubeBuildRequest, arbitrary_types_allowed=True):
                         f"Too many bands given for color {band.rgb.value}")
                 self.rgb[band.rgb] = band.name
 
-        if self.rgb != {} and len(self.rgb.keys()) != 3:
+        if len(self.rgb) != 3:
             raise BadRequest("The request should contain no bands with " +
                              "a non null 'rgb' value or 'RED', 'GREEN' " +
                              "and 'BLUE' should be assigned.")

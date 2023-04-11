@@ -1,81 +1,35 @@
-from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Any
+from pydantic import BaseModel, Field
 
 
-@dataclass
-class Dimension:
-    axis: str = field()
-    description: str = field()
-
-    def as_dict(self):
-        dimension = {}
-        dimension["axis"] = self.axis
-        dimension["description"] = self.description
-        return dimension
+class Dimension(BaseModel):
+    axis: str = Field()
+    description: str = Field()
 
 
-@dataclass
 class HorizontalSpatialDimension(Dimension):
-    extent: List[float | int] = field()
-    step: float | int | None = field()
-    type: str = field(default="spatial")
-    reference_system: str | int | object = field(default=4326)
-
-    def as_dict(self):
-        dimension = super().as_dict()
-        dimension["extent"] = self.extent
-        dimension["step"] = self.step
-        dimension["type"] = self.type
-        dimension["reference_system"] = self.reference_system
-        return dimension
+    extent: list[float | int] = Field()
+    step: float | int | None = Field(default=None)
+    type: str = Field(default="spatial")
+    reference_system: str | int | Any = Field(default=4326)
 
 
-@dataclass
 class TemporalDimension(Dimension):
-    extent: List[str | None] = field()
-    step: str | None = field()
-
-    def as_dict(self):
-        dimension = super().as_dict()
-        dimension["extent"] = self.extent
-        dimension["step"] = self.step
-        return dimension
+    extent: list[str | None] = Field()
+    step: str | None = Field()
 
 
-@dataclass
-class Variable:
-    dimensions: List[str] = field()
-    type: str = field()
-    description: str = field()
-    extent: List[float | int | str | None] = field()
-    unit: str = field()
-    expression: str = field()
-
-    def as_dict(self):
-        variable = {}
-        variable["dimensions"] = self.dimensions
-        variable["type"] = self.type
-        variable["description"] = self.description
-        variable["extent"] = self.extent
-        variable["unit"] = self.unit
-        variable["expression"] = self.expression
-        return variable
+class Variable(BaseModel):
+    dimensions: list[str] = Field()
+    type: str = Field()
+    description: str = Field()
+    extent: list[float | int | str | None] = Field()
+    unit: str = Field()
+    expression: str = Field()
 
 
-@dataclass
-class DatacubeMetadata:
-    dimensions: Dict[str, Dimension] = field()
-    variables: Dict[str, Variable] = field()
-    composition: Dict[int, List[str]] = field()
-    preview: Dict[str, str] = field()
-
-    def as_dict(self):
-        metadata = {}
-        metadata["dimensions"] = {
-            k: v.as_dict() for k, v in self.dimensions.items()}
-        metadata["variables"] = {
-            k: v.as_dict() for k, v in self.variables.items()}
-        metadata["composition"] = self.composition
-        metadata["preview"] = self.preview
-
-        return metadata
+class DatacubeMetadata(BaseModel):
+    dimensions: dict[str, Dimension] = Field()
+    variables: dict[str, Variable] = Field()
+    composition: dict[int, list[str]] = Field()
+    preview: dict[str, str] = Field()

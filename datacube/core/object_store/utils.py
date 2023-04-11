@@ -1,4 +1,3 @@
-from typing import Tuple
 from pathlib import Path
 from envyaml import EnvYAML
 from fsspec import get_mapper, FSMap
@@ -28,7 +27,7 @@ def create_output_object_store() -> AbstractObjectStore:
 
 
 # By default uses GCS as an object store
-def get_mapper_output_object_store(destination) -> Tuple[str, FSMap]:
+def get_mapper_output_object_store(destination) -> tuple[str, FSMap]:
     url = f"gs://{OUTPUT_OBJECT_STORE['gs.bucket']}/{destination}"
     return url, get_mapper(url, mode="w",
                            token=OUTPUT_OBJECT_STORE["gs.api_key"])

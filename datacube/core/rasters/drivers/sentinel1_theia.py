@@ -1,5 +1,4 @@
 import os.path as path
-from typing import Dict
 
 import smart_open as so
 from urllib.parse import urlparse
@@ -17,7 +16,7 @@ class Sentinel1_Theia(AbstractRasterArchive):
                               format="Theia")
 
     def __init__(self, object_store: AbstractObjectStore, raster_uri: str,
-                 bands: Dict[str, str], target_resolution: int,
+                 bands: dict[str, str], target_resolution: int,
                  raster_timestamp: int, zip_extract_path: str):
 
         if len(bands) != 1:
@@ -30,7 +29,7 @@ class Sentinel1_Theia(AbstractRasterArchive):
                                bands, zip_extract_path)
 
     def _extract_metadata(self, object_store: AbstractObjectStore,
-                          raster_uri: str, bands: Dict[str, str],
+                          raster_uri: str, bands: dict[str, str],
                           zip_extract_path: str):
         self.bands_to_extract = {}
 

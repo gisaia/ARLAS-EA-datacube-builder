@@ -1,6 +1,4 @@
-from typing import Annotated
-from fastapi import Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 SOURCE_DESCRIPTION = "The source of the raster product."
 FORMAT_DESCRIPTION = "The format of the raster product."
@@ -8,8 +6,8 @@ ALIAS_DESCRIPTION = "The alias of the raster product."
 
 
 class RasterType(BaseModel):
-    source: Annotated[str, Query(description=SOURCE_DESCRIPTION)]
-    format: Annotated[str, Query(description=FORMAT_DESCRIPTION)]
+    source: str = Field(description=SOURCE_DESCRIPTION)
+    format: str = Field(description=FORMAT_DESCRIPTION)
 
     def __eq__(self, __o: object) -> bool:
         if type(__o) != RasterType:
@@ -19,4 +17,4 @@ class RasterType(BaseModel):
 
 
 class AliasedRasterType(RasterType):
-    alias: Annotated[str, Query(description=ALIAS_DESCRIPTION)]
+    alias: str = Field(description=ALIAS_DESCRIPTION)

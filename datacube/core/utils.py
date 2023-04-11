@@ -1,5 +1,5 @@
 import re
-from typing import Dict, List, Match, Type
+from typing import Match
 
 from datacube.core.models.errors import BadRequest
 from datacube.core.models.request.cubeBuild import ExtendedCubeBuildRequest
@@ -13,7 +13,7 @@ from datacube.core.rasters.drivers import (AbstractRasterArchive,
 
 
 def get_product_bands(request: ExtendedCubeBuildRequest,
-                      product_type: RasterType) -> Dict[str, str]:
+                      product_type: RasterType) -> dict[str, str]:
     """
     Based on the request, creates a dictionnary with the pair
     (datacube name, band name) as (key, value)
@@ -38,7 +38,7 @@ def get_product_bands(request: ExtendedCubeBuildRequest,
     return product_bands
 
 
-def get_eval_formula(band_value: str, aliases: List[AliasedRasterType]) -> str:
+def get_eval_formula(band_value: str, aliases: list[AliasedRasterType]) -> str:
     def repl(match: Match[str]) -> str:
         for m in match.groups():
             return f"datacube.get('{m}')"
@@ -50,7 +50,7 @@ def get_eval_formula(band_value: str, aliases: List[AliasedRasterType]) -> str:
     return result
 
 
-def get_raster_driver(raster_product_type) -> Type[AbstractRasterArchive]:
+def get_raster_driver(raster_product_type) -> type[AbstractRasterArchive]:
     if raster_product_type == Sentinel2_Level2A_Safe.PRODUCT_TYPE:
         return Sentinel2_Level2A_Safe
     elif raster_product_type == Sentinel2_Level2A_Theia.PRODUCT_TYPE:

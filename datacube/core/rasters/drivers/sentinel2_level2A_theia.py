@@ -2,7 +2,6 @@ import os.path as path
 import re
 import zipfile
 from datetime import datetime
-from typing import Dict
 
 import smart_open as so
 from dateutil import parser
@@ -25,7 +24,7 @@ class Sentinel2_Level2A_Theia(AbstractRasterArchive):
                               format="L2A-Theia")
 
     def __init__(self, object_store: AbstractObjectStore, raster_uri: str,
-                 bands: Dict[str, str], target_resolution: int,
+                 bands: dict[str, str], target_resolution: int,
                  raster_timestamp: int, zip_extract_path: str):
 
         self.raster_timestamp = raster_timestamp
@@ -33,7 +32,7 @@ class Sentinel2_Level2A_Theia(AbstractRasterArchive):
         self._extract_metadata(object_store, raster_uri,
                                bands, zip_extract_path)
 
-    def _findBandsResolution(self, bands: Dict[str, str],
+    def _findBandsResolution(self, bands: dict[str, str],
                              target_resolution: int):
         # Force the resolution to be higher than HIGH_RESOLUTION
         self.target_resolution = max(HIGH_RESOLUTION, target_resolution)
@@ -77,7 +76,7 @@ class Sentinel2_Level2A_Theia(AbstractRasterArchive):
                                      min(self.bandsWithResolution.values()))
 
     def _extract_metadata(self, object_store: AbstractObjectStore,
-                          raster_uri: str, bands: Dict[str, str],
+                          raster_uri: str, bands: dict[str, str],
                           zip_extract_path: str):
         self.bands_to_extract = {}
 

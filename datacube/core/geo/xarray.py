@@ -1,6 +1,5 @@
 import xarray as xr
 import enum
-from typing import List, Dict
 import numpy as np
 
 from datacube.core.models.enums import ChunkingStrategy as CStrat
@@ -19,14 +18,14 @@ CARROT_CHUNK = {"x": 32, "y": 32, "t": 1024}
 SPINACH_CHUNK = {"x": 1024, "y": 1024, "t": 1}
 
 
-def get_chunk_shape(dims: Dict[str, int],
-                    chunking_strat: CStrat = CStrat.POTATO) -> Dict[str, int]:
+def get_chunk_shape(dims: dict[str, int],
+                    chunking_strat: CStrat = CStrat.POTATO) -> dict[str, int]:
     """
     Generates chunks of pre-determined size based on a desired strategy.
     For 'uint32' and 'int32' data types, they result in ~8Mb chunks.
     """
 
-    def resize_time_depth(chunk_shape: Dict[str, int], dims: Dict[str, int]):
+    def resize_time_depth(chunk_shape: dict[str, int], dims: dict[str, int]):
         while dims["t"] <= chunk_shape["t"] / 4:
             chunk_shape["x"] *= 2
             chunk_shape["y"] *= 2
@@ -56,7 +55,7 @@ def get_bounds(ds: xr.Dataset):
 
 
 def intersect(first_dataset: xr.Dataset,
-              second_dataset: xr.Dataset) -> List[IntersectionType]:
+              second_dataset: xr.Dataset) -> list[IntersectionType]:
     first_bounds = get_bounds(first_dataset)
     second_bounds = get_bounds(second_dataset)
 

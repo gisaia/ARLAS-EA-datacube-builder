@@ -7,7 +7,6 @@ import os
 import os.path as path
 import shutil
 from datetime import datetime
-from typing import List
 
 import sys
 from pathlib import Path
@@ -22,7 +21,7 @@ TMP_DIR = "tmp/"
 MAX_GIF_SIZE = 10000
 
 
-def truncate_datetime(times: List[datetime]) -> List[str]:
+def truncate_datetime(times: list[datetime]) -> list[str]:
     """
     Finds the biggest common denominator of a list of times
     to get the shortest common representation

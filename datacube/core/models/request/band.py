@@ -1,6 +1,4 @@
-from typing import Annotated
-from fastapi import Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from matplotlib import cm
 
 from datacube.core.models.enums import RGB
@@ -19,20 +17,14 @@ CMAP_DESCRIPTION = "The matplotlib color map to use for the preview."
 
 
 class Band(BaseModel):
-    name: Annotated[
-        str, Query(description=NAME_DESCRIPTION)]
-    value: Annotated[
-        str, Query(description=VALUE_DESCRIPTION)]
-    description: Annotated[
-        str | None, Query(description=DESCRIPTION_DESCRIPTION)] = None
-    min: Annotated[
-        float | None, Query(description=MIN_DESCRIPTION)] = None
-    max: Annotated[
-        float | None, Query(description=MAX_DESCRIPTION)] = None
-    rgb: Annotated[
-        RGB | None, Query(description=RGB_DESCRIPTION)] = None
-    cmap: Annotated[
-        str | None, Query(description=CMAP_DESCRIPTION)] = None
+    name: str = Field(description=NAME_DESCRIPTION)
+    value: str = Field(description=VALUE_DESCRIPTION)
+    description: str | None = Field(default=None,
+                                    description=DESCRIPTION_DESCRIPTION)
+    min: float | None = Field(default=None, description=MIN_DESCRIPTION)
+    max: float | None = Field(default=None, description=MAX_DESCRIPTION)
+    rgb: RGB | None = Field(default=None, description=RGB_DESCRIPTION)
+    cmap: str | None = Field(default=None, description=CMAP_DESCRIPTION)
 
     def check_visualistion(self):
         if self.cmap is not None and self.cmap not in cm._cmap_registry:

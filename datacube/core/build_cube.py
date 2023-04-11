@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-from typing import List, Dict, Tuple
 import traceback
 
 import base64
@@ -42,8 +41,8 @@ TMP_DIR = "tmp/"
 LOGGER = Logger.get_logger()
 
 
-def download(input: Tuple[ExtendedCubeBuildRequest, int, int]) \
-        -> Dict[float, List[str]]:
+def download(input: tuple[ExtendedCubeBuildRequest, int, int]) \
+        -> dict[float, list[str]]:
     """
     Builds a zarr corresponding to the requested bands for
     the raster file 'file_idx' in the group 'group_idx'
@@ -76,7 +75,7 @@ def download(input: Tuple[ExtendedCubeBuildRequest, int, int]) \
                                               request.target_projection,
                                               polygon=request.roi_polygon)
 
-        grouped_datasets: Dict[int, List[str]] = {timestamp: [zarr_path]}
+        grouped_datasets: dict[int, list[str]] = {timestamp: [zarr_path]}
         return grouped_datasets
 
     except Exception as e:
@@ -85,9 +84,9 @@ def download(input: Tuple[ExtendedCubeBuildRequest, int, int]) \
         raise DownloadError(e.args[0])
 
 
-def merge_download(result_a: Dict[int, List[str]],
-                   result_b: Dict[int, List[str]]) \
-                   -> Dict[int, List[str]]:
+def merge_download(result_a: dict[int, list[str]],
+                   result_b: dict[int, list[str]]) \
+                   -> dict[int, list[str]]:
     """
     Merge the results of the download method in a mapreduce process
     """
@@ -138,7 +137,7 @@ def merge_mosaicking(mosaick_a: xr.Dataset,
 
 
 def __build_datacube(request: ExtendedCubeBuildRequest):
-    grouped_datasets: dict[int, List[str]] = {}
+    grouped_datasets: dict[int, list[str]] = {}
 
     center_granule_idx = {"group": int, "index": int}
     xmin, ymin, xmax, ymax = np.inf, np.inf, -np.inf, -np.inf

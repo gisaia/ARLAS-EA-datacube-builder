@@ -1,20 +1,22 @@
-from typing import Dict, List, Annotated
+from typing import Annotated, Dict, List
+
 from fastapi import Query
 from pydantic import BaseModel
 from shapely.geometry import Polygon
 
-from datacube.core.models.request.rasterProductType import RasterProductType
-from datacube.core.models.request.rasterGroup import RasterGroup
-from datacube.core.models.request.band import Band
-from datacube.core.models.errors import BadRequest
-from datacube.core.models.enums import RGB, ChunkingStrategy as CStrat
 from datacube.core.geo.utils import roi2geometry
+from datacube.core.models.enums import RGB
+from datacube.core.models.enums import ChunkingStrategy as CStrat
+from datacube.core.models.errors import BadRequest
+from datacube.core.models.request.band import Band
+from datacube.core.models.request.rasterGroup import RasterGroup
+from datacube.core.models.request.rasterProductType import (AliasedRasterType,
+                                                            RasterType)
 
 COMPOSITION_DESCRIPTION = ""
 DATACUBEPATH_DESCRIPTION = "The Object Store path to the datacube."
 BANDS_DESCRIPTION = "The list of bands to extract."
-ALIASES_DESCRIPTION = "The dictionnary of aliases for this datacube." + \
-                        "Expected format (key:value) alias:(source, format)."
+ALIASES_DESCRIPTION = "The list of aliases for this datacube."
 ROI_DESCRIPTION = "The Region Of Interest to extract. " + \
                         "Accepted formats are BBOX or WKT POLYGON."
 RESOLUTION_DESCRIPTION = "The requested spatial resolution in meters."
@@ -36,7 +38,7 @@ class CubeBuildRequest(BaseModel):
     bands: Annotated[
         List[Band], Query(description=BANDS_DESCRIPTION)]
     aliases: Annotated[
-        Dict[str, List[str]], Query(description=ALIASES_DESCRIPTION)]
+        List[AliasedRasterType], Query(description=ALIASES_DESCRIPTION)]
     roi: Annotated[
         str, Query(description=ROI_DESCRIPTION)]
     target_resolution: Annotated[
@@ -50,8 +52,6 @@ class CubeBuildRequest(BaseModel):
 class ExtendedCubeBuildRequest(CubeBuildRequest, arbitrary_types_allowed=True):
     roi_polygon: Annotated[
         Polygon, None] = Polygon()
-    product_aliases: Annotated[
-        Dict[str, RasterProductType], None] = {}
     rgb: Annotated[
         Dict[RGB, str], None] = {}
 
@@ -60,15 +60,11 @@ class ExtendedCubeBuildRequest(CubeBuildRequest, arbitrary_types_allowed=True):
 
         self.roi_polygon = roi2geometry(request.roi)
 
-        for k, v in request.aliases.items():
-            if len(v) != 2:
-                raise BadRequest("Aliases should be specified" +
-                                 "with source and format as values")
-            self.product_aliases[k] = RasterProductType(
-                source=v[0], format=v[1])
+        aliased_types = list(map(lambda a: RasterType(**a.dict()),
+                                 self.aliases))
         for group in self.composition:
             for file in group.rasters:
-                if file.type not in self.product_aliases.values():
+                if file.type not in aliased_types:
                     raise BadRequest("Aliases were not defined for type: " +
                                      f"source:{file.type.source}, " +
                                      f"format:{file.type.format}")

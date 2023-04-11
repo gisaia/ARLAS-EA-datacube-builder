@@ -97,7 +97,11 @@ curl -X POST -H "Content-Type: application/json" -d '{
         }
     ],
     "target_resolution": 20,
-    "aliases": {
-        "Snow": ["Theia", "Snow"]
-    }
+    "aliases": [
+        {
+            "alias": "Snow",
+            "source": "Theia",
+            "format": "Snow"
+        }
+    ]
 }' http://localhost:5000/cube/build

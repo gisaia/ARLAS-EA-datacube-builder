@@ -11,7 +11,7 @@ from typing import List
 
 import sys
 from pathlib import Path
-ROOT_PATH = str(Path(__file__).parent.parent)
+ROOT_PATH = str(Path(__file__).parent.parent.parent)
 sys.path.insert(0, ROOT_PATH)
 from datacube.core.visualisation.preview import create_preview_b64, \
                                                 create_preview_b64_cmap, \
@@ -19,6 +19,7 @@ from datacube.core.visualisation.preview import create_preview_b64, \
 from datacube.core.models.enums import RGB
 
 TMP_DIR = "tmp/"
+MAX_GIF_SIZE = 10000
 
 
 def truncate_datetime(times: List[datetime]) -> List[str]:
@@ -40,7 +41,7 @@ def truncate_datetime(times: List[datetime]) -> List[str]:
     return map(lambda t: str(t.year), times)
 
 
-def create_gif(datacube: xr.Dataset, gif_name: str):
+def create_gif(datacube: xr.Dataset, gif_name: str, size: list[int]):
     # Find where to put the temporary pictures
     matches = re.findall(r"(.*)\.gif", gif_name)
     if len(matches) == 0:
@@ -58,11 +59,10 @@ def create_gif(datacube: xr.Dataset, gif_name: str):
             rgb = {RGB.RED: datacube.attrs["preview"]["RED"],
                    RGB.GREEN: datacube.attrs["preview"]["GREEN"],
                    RGB.BLUE: datacube.attrs["preview"]["BLUE"]}
-            create_preview_b64(datacube, rgb,
-                               img_path, t)
+            create_preview_b64(datacube, rgb, img_path, t, size=size)
         else:
             create_preview_b64_cmap(datacube, datacube.attrs["preview"],
-                                    img_path, t)
+                                    img_path, t, size=size)
         add_text_on_white_band(img_path, t_text)
 
     # Create the gif and clean-up
@@ -83,6 +83,9 @@ if __name__ == "__main__":
         description="Script to build gifs from datacubes")
     parser.add_argument("-d", dest="datacube_path",
                         help="Path to the datacube")
+    parser.add_argument("-s", dest="size", nargs='+', type=int,
+                        help="Size of the gif")
+    parser.add_argument("--big", dest="big", action="store_true")
 
     args = parser.parse_args()
 
@@ -91,8 +94,14 @@ if __name__ == "__main__":
         exit
 
     gif_path = f"{args.datacube_path.rstrip('/')}.gif"
+    size = args.size if args.size and len(args.size) == 2 else [256, 256]
 
     datacube = xr.open_zarr(args.datacube_path)
 
-    create_gif(datacube, gif_path)
+    if args.big:
+        size = [len(datacube.x), len(datacube.y)]
+        while size[0] > MAX_GIF_SIZE or size[1] > MAX_GIF_SIZE:
+            size = [size[0] // 4, size[1] // 4]
+
+    create_gif(datacube, gif_path, size)
     print(f"[SUCCESS] Created the gif {gif_path}")

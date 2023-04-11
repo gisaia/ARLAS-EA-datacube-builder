@@ -12,8 +12,8 @@ from datacube.core.models.enums import RGB
 FONT = "./configs/Roboto-Light.ttf"
 
 
-def __band_to_256px(dataset: xr.Dataset, band: str,
-                    x_factor: int, y_factor: int, time_slice: int):
+def __resize_band(dataset: xr.Dataset, band: str, x_factor: int,
+                  y_factor: int, time_slice: int) -> xr.DataArray:
     """
     Put a band values between 0 and 255
     """
@@ -34,27 +34,28 @@ def __band_to_256px(dataset: xr.Dataset, band: str,
 
 
 def create_preview_b64(dataset: xr.Dataset, bands: Dict[RGB, str],
-                       preview_path: str, time_slice=None):
+                       preview_path: str, time_slice=None,
+                       size: list[int] = [256, 256]):
     """
     Create a 256x256 preview of datacube and convert it to base64
     """
     if time_slice is None:
-        time_slice = dataset.t.values[-1]
-    # We want a 256x256 pic
-    xfactor = len(dataset.x) // 256
-    yfactor = len(dataset.y) // 256
+        time_slice = dataset.get("t").values[-1]
+
+    # Factor to resize the image
+    xfactor = len(dataset.x) // size[0]
+    yfactor = len(dataset.y) // size[1]
 
     overview_data = xr.Dataset()
     for color, band in bands.items():
-        overview_data[color.value] = __band_to_256px(
+        overview_data[color.value] = __resize_band(
             dataset, band, xfactor, yfactor, time_slice)
 
-    # Cut the x and y to have 256x256
     xlen = len(overview_data.x)
     ylen = len(overview_data.y)
     overview_data = overview_data.isel(
-        x=slice(int((xlen-256)/2), int((xlen+256)/2)),
-        y=slice(int((ylen-256)/2), int((ylen+256)/2)))
+        x=slice(int((xlen-size[1])/2), int((xlen+size[1])/2)),
+        y=slice(int((ylen-size[0])/2), int((ylen+size[0])/2)))
 
     overview_data.rio.to_raster(f"{preview_path}", driver="PNG")
     overview_data.close()
@@ -68,22 +69,23 @@ def create_preview_b64(dataset: xr.Dataset, bands: Dict[RGB, str],
 
 
 def create_preview_b64_cmap(dataset: xr.Dataset, preview: Dict[str, str],
-                            preview_path: str, time_slice=None):
+                            preview_path: str, time_slice=None,
+                            size: list[int] = [256, 256]):
     if time_slice is None:
-        time_slice = dataset.t.values[-1]
+        time_slice = dataset.get("t").values[-1]
     cmap, band = list(preview.items())[0]
-    # We want a 256x256 pic
-    x_factor = len(dataset.x) // 256
-    y_factor = len(dataset.y) // 256
 
-    data = __band_to_256px(dataset, band,
-                           x_factor, y_factor, time_slice).values
+    # Factor to resize the image
+    x_factor = len(dataset.x) // size[0]
+    y_factor = len(dataset.y) // size[1]
 
-    # Cut the x and y to have 256x256
+    data = __resize_band(dataset, band,
+                         x_factor, y_factor, time_slice).values
+
     xlen = data.shape[0]
-    ylen = data.shape[0]
-    data = data[int((xlen-256)/2):int((xlen+256)/2),
-                int((ylen-256)/2):int((ylen+256)/2)]
+    ylen = data.shape[1]
+    data = data[int((xlen-size[1])/2):int((xlen+size[1])/2),
+                int((ylen-size[0])/2):int((ylen+size[0])/2)]
 
     img = Image.fromarray(cm.get_cmap(cmap)(data, bytes=True))
     img.save(preview_path)
@@ -97,18 +99,20 @@ def create_preview_b64_cmap(dataset: xr.Dataset, preview: Dict[str, str],
 
 def add_text_on_white_band(imgPath: str, text: str):
     img = Image.open(imgPath)
-    font = ImageFont.truetype(FONT)
+    band_height = img.height // 10
 
-    # Add white band to the 256x256 preview
-    img_band = Image.new("RGB", (256, 276), "White")
+    font = ImageFont.truetype(FONT, int(band_height * 0.6))
+
+    # Add white band to the preview
+    img_band = Image.new("RGB", (img.width, img.height + band_height), "White")
     img_band.paste(img)
 
     # Create an editable object of the image
     img_edit = ImageDraw.Draw(img_band)
 
     # Add centered text in the white band
-    text_pos = ((256 - font.getsize(text)[0]) / 2,
-                256 + (20 - font.getsize(text)[1]) / 2)
+    text_pos = ((img.width - font.getsize(text)[0]) / 2,
+                img.height + (band_height - font.getsize(text)[1]) / 2)
     img_edit.text(text_pos, text, (0, 0, 0), font=font)
 
     img_band.save(imgPath)

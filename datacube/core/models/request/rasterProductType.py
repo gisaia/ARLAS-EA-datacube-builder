@@ -1,8 +1,13 @@
 from pydantic import BaseModel, Field
 
-SOURCE_DESCRIPTION = "The source of the raster product."
-FORMAT_DESCRIPTION = "The format of the raster product."
-ALIAS_DESCRIPTION = "The alias of the raster product."
+SOURCE_DESCRIPTION = "Designates where the product comes from. " + \
+                     "For example, can be the satellite constellation " + \
+                     "that took the original product (ie 'Sentinel2')."
+FORMAT_DESCRIPTION = "Designates the transformation applied to the " + \
+                     "raw product and the format of the final raster. " + \
+                     "For example, 'L2A-SAFE'."
+ALIAS_DESCRIPTION = "The alias of the raster product type. " + \
+                    "Has to be defined in the aliases object of the request."
 
 
 class RasterType(BaseModel):

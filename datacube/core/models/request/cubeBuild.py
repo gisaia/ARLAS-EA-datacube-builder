@@ -74,7 +74,8 @@ class ExtendedCubeBuildRequest(CubeBuildRequest, arbitrary_types_allowed=True):
                         f"Too many bands given for color {band.rgb.value}")
                 self.rgb[band.rgb] = band.name
 
-        if len(self.rgb) != 3:
-            raise BadRequest("The request should contain no bands with " +
-                             "a non null 'rgb' value or 'RED', 'GREEN' " +
-                             "and 'BLUE' should be assigned.")
+        if len(self.rgb) != 3 and len(self.rgb) != 0:
+            raise BadRequest("The request should either contain no bands " +
+                             "with a set 'rgb' value or 'RED', 'GREEN' " +
+                             "and 'BLUE' should be assigned to " +
+                             "the bands of the datacube.")

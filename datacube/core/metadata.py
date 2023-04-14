@@ -10,7 +10,7 @@ from datacube.core.models.enums import RGB
 
 def create_datacube_metadata(request: ExtendedCubeBuildRequest,
                              datacube: xr.Dataset, x_step: float | int | None,
-                             y_step: float | int | None):
+                             y_step: float | int | None) -> xr.Dataset:
     # Remove metdata created during datacube creation
     datacube.attrs = {}
 
@@ -66,5 +66,6 @@ def create_datacube_metadata(request: ExtendedCubeBuildRequest,
                 preview = {band.cmap: band.name}
                 break
 
-    metadata = DatacubeMetadata(dimensions, variables, composition, preview)
+    metadata = DatacubeMetadata(dimensions=dimensions, variables=variables,
+                                composition=composition, preview=preview)
     return datacube.assign_attrs(metadata.dict())

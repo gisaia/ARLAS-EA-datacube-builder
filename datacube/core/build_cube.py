@@ -8,7 +8,6 @@ import shutil
 import numpy as np
 import xarray as xr
 from shapely.geometry import Point
-import smart_open as so
 import mr4mp
 import concurrent.futures
 
@@ -24,8 +23,8 @@ from datacube.core.geo.utils import complete_grid
 from datacube.core.logging.logger import CustomLogger as Logger
 from datacube.core.metadata import create_datacube_metadata
 from datacube.core.object_store.utils import create_input_object_store, \
-                                             get_mapper_output_object_store, \
-                                             create_output_object_store
+                                             get_mapper_output, \
+                                             write_bytes
 from datacube.core.visualisation.preview import create_preview_b64, \
                                                 create_preview_b64_cmap
 from datacube.core.utils import get_product_bands, \
@@ -239,8 +238,7 @@ def __build_datacube(request: ExtendedCubeBuildRequest):
 
     LOGGER.info("Writing datacube to Object Store")
     try:
-        datacube_url, mapper = get_mapper_output_object_store(
-            request.datacube_path)
+        datacube_url, mapper = get_mapper_output(request.datacube_path)
 
         datacube.chunk(get_chunk_shape(
                 datacube.dims, request.chunking_strategy)) \
@@ -262,11 +260,8 @@ def __build_datacube(request: ExtendedCubeBuildRequest):
                 datacube, datacube.attrs["preview"],
                 f'{zarr_root_path}.png')
 
-        client = create_output_object_store().client
-
-        with so.open(f"{datacube_url}.png", "wb",
-                     transport_params={"client": client}) as fb:
-            fb.write(base64.b64decode(preview))
+        preview_url = write_bytes(f"{request.datacube_path}.png",
+                                  base64.b64decode(preview))
     except Exception as e:
         LOGGER.error(e)
         traceback.print_exc()
@@ -280,7 +275,7 @@ def __build_datacube(request: ExtendedCubeBuildRequest):
 
     return CubeBuildResult(
         datacube_url=datacube_url,
-        preview_url=f"{datacube_url}.png",
+        preview_url=preview_url,
         preview=preview)
 
 

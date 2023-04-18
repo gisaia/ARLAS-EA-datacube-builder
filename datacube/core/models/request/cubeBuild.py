@@ -10,12 +10,19 @@ from datacube.core.models.request.rasterGroup import RasterGroup
 from datacube.core.models.request.rasterProductType import (AliasedRasterType,
                                                             RasterType)
 
-COMPOSITION_DESCRIPTION = ""
-DATACUBEPATH_DESCRIPTION = "The Object Store path to the datacube."
-BANDS_DESCRIPTION = "The list of bands to extract."
-ALIASES_DESCRIPTION = "The list of aliases for this datacube."
+COMPOSITION_DESCRIPTION = "The composition is an array of raster groups " + \
+                          "that each represent a temporal slice of " + \
+                          "the datacube. The whole composition contains " + \
+                          "all the data requested across space and time."
+DATACUBEPATH_DESCRIPTION = "The path to the datacube. " + \
+                           "Can be in the local storage or in an object store."
+BANDS_DESCRIPTION = "The list of bands to extract. " + \
+                    "The bands will be the variables of the datacube/zarr."
+ALIASES_DESCRIPTION = "The list of aliases for this datacube. " + \
+                      "They will allow to quickly reference the " + \
+                      "product bands used to compute the datacube bands."
 ROI_DESCRIPTION = "The Region Of Interest to extract. " + \
-                        "Accepted formats are BBOX or WKT POLYGON."
+                  "Accepted formats are BBOX or WKT POLYGON."
 RESOLUTION_DESCRIPTION = "The requested spatial resolution in meters."
 PROJECTION_DESCRIPTION = "The targeted projection. Default: 'EPSG:4326'."
 CHUNKING_DESCRIPTION = "Defines how we want the datacube to be chunked, " + \
@@ -67,7 +74,8 @@ class ExtendedCubeBuildRequest(CubeBuildRequest, arbitrary_types_allowed=True):
                         f"Too many bands given for color {band.rgb.value}")
                 self.rgb[band.rgb] = band.name
 
-        if len(self.rgb) != 3:
-            raise BadRequest("The request should contain no bands with " +
-                             "a non null 'rgb' value or 'RED', 'GREEN' " +
-                             "and 'BLUE' should be assigned.")
+        if len(self.rgb) != 3 and len(self.rgb) != 0:
+            raise BadRequest("The request should either contain no bands " +
+                             "with a set 'rgb' value or 'RED', 'GREEN' " +
+                             "and 'BLUE' should be assigned to " +
+                             "the bands of the datacube.")

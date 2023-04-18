@@ -2,9 +2,10 @@ from pydantic import BaseModel, Field
 
 from datacube.core.models.request.rasterProductType import RasterType
 
-TYPE_DESCRIPTION = "The type of the raster file."
-PATH_DESCRIPTION = "The path to the raster file."
-ID_DESCRIPTION = "Identifier for the raster file, " + \
+TYPE_DESCRIPTION = "Designates the type of raster file this one is, " + \
+                   "to process it with the correct driver."
+PATH_DESCRIPTION = "The object store path to the raster file."
+ID_DESCRIPTION = "Unique identifier for the raster file " + \
     "used for the traceability of the datacube."
 
 

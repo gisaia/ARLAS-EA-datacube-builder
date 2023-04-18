@@ -32,6 +32,11 @@ app:
   debug: True
 ```
 
+The output datacubes and previews can be configured to be written either locally or in an object store through the `storage` parameter of the `configs/outputObjectStore.yml` file. Several options are available:
+
+- "local" to write locally
+- "gs" to write in Google Cloud Storage
+
 In order to be able to access Object Stores, an `credentials` file must be created to set the global variables used.
 
 ```yaml

@@ -1,5 +1,5 @@
-from pydantic import BaseModel, Field
 from matplotlib import cm
+from pydantic import BaseModel, Field
 
 from datacube.core.models.enums import RGB
 from datacube.core.models.errors import BadRequest

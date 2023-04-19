@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 
-from matplotlib._cm import datad
 import json
+
+from matplotlib._cm import datad
 
 angular_cmaps = {}
 for name, spec in datad.items():

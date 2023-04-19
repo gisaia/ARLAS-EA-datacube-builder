@@ -1,11 +1,12 @@
-import xarray as xr
 from datetime import datetime
 
-from datacube.core.models.request.cubeBuild import ExtendedCubeBuildRequest
-from datacube.core.models.metadata import HorizontalSpatialDimension, \
-                                          TemporalDimension, Variable, \
-                                          DatacubeMetadata
+import xarray as xr
+
 from datacube.core.models.enums import RGB
+from datacube.core.models.metadata import (DatacubeMetadata,
+                                           HorizontalSpatialDimension,
+                                           TemporalDimension, Variable)
+from datacube.core.models.request.cubeBuild import ExtendedCubeBuildRequest
 
 
 def create_datacube_metadata(request: ExtendedCubeBuildRequest,

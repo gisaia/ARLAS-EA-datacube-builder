@@ -1,17 +1,17 @@
 import abc
+import os
+import os.path as path
+import shutil
 from dataclasses import dataclass
 
-import os.path as path
-import os
-import shutil
 import rasterio
 import xarray as xr
 from shapely.geometry import Polygon
 
-from datacube.core.object_store.drivers.abstract import AbstractObjectStore
-from datacube.core.rasters.raster import Raster
 from datacube.core.geo.xarray import get_chunk_shape
 from datacube.core.models.enums import ChunkingStrategy as CStrat
+from datacube.core.object_store.drivers.abstract import AbstractObjectStore
+from datacube.core.rasters.raster import Raster
 
 TMP = "tmp"
 FINAL = "final"

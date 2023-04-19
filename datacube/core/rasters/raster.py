@@ -1,16 +1,15 @@
+import math
 import os.path as path
+
 import numpy as np
 import zarr
-import math
-from shapely.geometry import Polygon
-
 from rasterio.coords import BoundingBox
 from rasterio.io import DatasetReader
 from rasterio.mask import mask
-from rasterio.warp import calculate_default_transform, reproject, \
-    Resampling, transform_bounds
 from rasterio.transform import IDENTITY, from_gcps
-
+from rasterio.warp import (Resampling, calculate_default_transform, reproject,
+                           transform_bounds)
+from shapely.geometry import Polygon
 
 from datacube.core.geo.utils import project_polygon
 from datacube.core.geo.xarray import get_chunk_shape

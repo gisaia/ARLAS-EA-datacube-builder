@@ -1,10 +1,10 @@
-import xarray as xr
 import base64
+
 # Apparently necessary for the .rio to work
 import rioxarray
-
-from PIL import Image, ImageFont, ImageDraw
+import xarray as xr
 from matplotlib import cm
+from PIL import Image, ImageDraw, ImageFont
 
 from datacube.core.models.enums import RGB
 

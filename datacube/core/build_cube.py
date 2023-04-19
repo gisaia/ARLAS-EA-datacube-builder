@@ -1,40 +1,34 @@
 #!/usr/bin/python3
-import traceback
-
 import base64
+import concurrent.futures
 import os
 import os.path as path
 import shutil
+import traceback
+from urllib.parse import urlparse
+
+import mr4mp
 import numpy as np
 import xarray as xr
 from shapely.geometry import Point
-import mr4mp
-import concurrent.futures
 
-from datacube.core.models.request.cubeBuild import CubeBuildRequest, \
-    ExtendedCubeBuildRequest
-
-from datacube.core.models.cubeBuildResult import CubeBuildResult
-from datacube.core.models.errors import DownloadError, \
-                                        MosaickingError, \
-                                        UploadError
-from datacube.core.models.enums import ChunkingStrategy as CStrat
 from datacube.core.geo.utils import complete_grid
+from datacube.core.geo.xarray import (get_bounds, get_chunk_shape,
+                                      merge_datasets)
 from datacube.core.logging.logger import CustomLogger as Logger
 from datacube.core.metadata import create_datacube_metadata
-from datacube.core.object_store.utils import create_input_object_store, \
-                                             get_mapper_output, \
-                                             write_bytes
-from datacube.core.visualisation.preview import create_preview_b64, \
-                                                create_preview_b64_cmap
-from datacube.core.utils import get_product_bands, \
-                                get_raster_driver, \
-                                get_eval_formula
-from datacube.core.geo.xarray import get_bounds, \
-                                     get_chunk_shape, \
-                                     merge_datasets
-
-from urllib.parse import urlparse
+from datacube.core.models.cubeBuildResult import CubeBuildResult
+from datacube.core.models.enums import ChunkingStrategy as CStrat
+from datacube.core.models.errors import (DownloadError, MosaickingError,
+                                         UploadError)
+from datacube.core.models.request.cubeBuild import (CubeBuildRequest,
+                                                    ExtendedCubeBuildRequest)
+from datacube.core.object_store.utils import (create_input_object_store,
+                                              get_mapper_output, write_bytes)
+from datacube.core.utils import (get_eval_formula, get_product_bands,
+                                 get_raster_driver)
+from datacube.core.visualisation.preview import (create_preview_b64,
+                                                 create_preview_b64_cmap)
 
 TMP_DIR = "tmp/"
 LOGGER = Logger.get_logger()

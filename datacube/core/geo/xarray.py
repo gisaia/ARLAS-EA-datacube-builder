@@ -1,6 +1,7 @@
-import xarray as xr
 import enum
+
 import numpy as np
+import xarray as xr
 
 from datacube.core.models.enums import ChunkingStrategy as CStrat
 

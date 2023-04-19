@@ -2,13 +2,14 @@ import os.path as path
 import re
 import zipfile
 from datetime import datetime
+
 import smart_open as so
 from dateutil import parser
 from lxml import etree
 
-from datacube.core.object_store.drivers.abstract import AbstractObjectStore
-from datacube.core.models.request.rasterProductType import RasterType
 from datacube.core.models.errors import DownloadError
+from datacube.core.models.request.rasterProductType import RasterType
+from datacube.core.object_store.drivers.abstract import AbstractObjectStore
 from datacube.core.rasters.drivers.abstract import AbstractRasterArchive
 
 PRODUCT_START_TIME = "metadataSection/metadataObject/metadataWrap/xmlData/" + \

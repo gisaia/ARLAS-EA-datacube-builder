@@ -1,8 +1,9 @@
 #!/usr/bin/python3
 
+import json
+
 import uvicorn
 from fastapi import FastAPI
-import json
 
 from datacube.core.logging.logger import CustomLogger as Logger
 from datacube.rest import ROUTERS

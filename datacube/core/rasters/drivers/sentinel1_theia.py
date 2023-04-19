@@ -1,13 +1,13 @@
 import os.path as path
+import re
+from urllib.parse import urlparse
 
 import smart_open as so
-from urllib.parse import urlparse
-import re
 from dateutil import parser
 
-from datacube.core.object_store.drivers.abstract import AbstractObjectStore
-from datacube.core.models.request.rasterProductType import RasterType
 from datacube.core.models.errors import DownloadError
+from datacube.core.models.request.rasterProductType import RasterType
+from datacube.core.object_store.drivers.abstract import AbstractObjectStore
 from datacube.core.rasters.drivers.abstract import AbstractRasterArchive
 
 

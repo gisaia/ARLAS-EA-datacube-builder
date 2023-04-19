@@ -1,9 +1,8 @@
 from fastapi import APIRouter, status
 
-from datacube.rest.ogc.models import StatusInfo, ExceptionType
+from datacube.rest.ogc.models import ExceptionType, StatusInfo
 from datacube.rest.ogc.models.execute import InlineOrRefData
 from datacube.rest.ogc.utils import json_http_error
-
 
 ROUTER = APIRouter()
 

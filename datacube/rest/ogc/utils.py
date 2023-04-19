@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from datacube.rest.ogc.models import (InputDescription, OGCException,
                                       OutputDescription)
-from datacube.rest.ogc.models.execute import BinaryInputValue, Execute, Bbox
+from datacube.rest.ogc.models.execute import Bbox, BinaryInputValue, Execute
 
 
 def base_model2description(model: type[BaseModel]) \

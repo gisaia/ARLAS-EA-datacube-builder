@@ -1,11 +1,12 @@
-from pathlib import Path
-from envyaml import EnvYAML
-from fsspec import get_mapper, FSMap
 from os.path import join
-import smart_open as so
+from pathlib import Path
 
-from datacube.core.object_store.drivers.gcs import GCSObjectStore
+import smart_open as so
+from envyaml import EnvYAML
+from fsspec import FSMap, get_mapper
+
 from datacube.core.object_store.drivers.abstract import AbstractObjectStore
+from datacube.core.object_store.drivers.gcs import GCSObjectStore
 
 ROOT_PATH = str(Path(__file__).parent.parent.parent.parent)
 INPUT_OBJECT_STORE = EnvYAML(join(ROOT_PATH, "configs/inputObjectStore.yml"))

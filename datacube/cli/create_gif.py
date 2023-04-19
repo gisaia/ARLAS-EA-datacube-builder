@@ -1,21 +1,22 @@
 #!/usr/bin/python3
 
 import argparse
-import xarray as xr
-import re
 import os
 import os.path as path
+import re
 import shutil
-from datetime import datetime
-
 import sys
+from datetime import datetime
 from pathlib import Path
+
+import xarray as xr
+
 ROOT_PATH = str(Path(__file__).parent.parent.parent)
 sys.path.insert(0, ROOT_PATH)
-from datacube.core.visualisation.preview import create_preview_b64, \
-                                                create_preview_b64_cmap, \
-                                                add_text_on_white_band
 from datacube.core.models.enums import RGB
+from datacube.core.visualisation.preview import (add_text_on_white_band,
+                                                 create_preview_b64,
+                                                 create_preview_b64_cmap)
 
 TMP_DIR = "tmp/"
 MAX_GIF_SIZE = 10000

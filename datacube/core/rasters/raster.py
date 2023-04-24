@@ -4,6 +4,7 @@ import os.path as path
 import numpy as np
 import zarr
 from rasterio.coords import BoundingBox
+from rasterio.crs import CRS
 from rasterio.io import DatasetReader
 from rasterio.mask import mask
 from rasterio.transform import IDENTITY, from_gcps
@@ -23,12 +24,13 @@ class Raster:
         self.band = band
         self.dtype = raster_reader.dtypes[0].lower()
         self.crs = target_projection
+        self.src_crs = raster_reader.crs
 
         # Extract the ROI in local referential
-        if raster_reader.crs is None:
-            raster_reader.crs = "EPSG:4326"
+        if self.src_crs is None:
+            self.src_crs = CRS.from_epsg(4326)
         local_proj_polygon = project_polygon(
-                polygon, target_projection, raster_reader.crs)
+                polygon, target_projection, self.src_crs)
 
         # Some raster files are not georeferenced with transform but with GCP
         if raster_reader.transform == IDENTITY:
@@ -50,13 +52,13 @@ class Raster:
         self.height = self.raster_data.shape[0]
 
         # Find the new bounding box of the data
-        bounds = raster_reader.bounds
+        self.src_bounds = raster_reader.bounds
         raster_polygon = Polygon([
-                (bounds.left, bounds.bottom),
-                (bounds.right, bounds.bottom),
-                (bounds.right, bounds.top),
-                (bounds.left, bounds.top),
-                (bounds.left, bounds.bottom)])
+                (self.src_bounds.left, self.src_bounds.bottom),
+                (self.src_bounds.right, self.src_bounds.bottom),
+                (self.src_bounds.right, self.src_bounds.top),
+                (self.src_bounds.left, self.src_bounds.top),
+                (self.src_bounds.left, self.src_bounds.bottom)])
 
         intersection_bounds = local_proj_polygon.intersection(
             raster_polygon).bounds
@@ -64,17 +66,17 @@ class Raster:
 
         # Project the raster in the target projection
         self.transform, self.width, self.height = calculate_default_transform(
-            raster_reader.crs, target_projection,
+            self.src_crs, target_projection,
             self.width, self.height, *self.bounds)
 
         self.bounds = transform_bounds(
-            raster_reader.crs, target_projection, *self.bounds)
+            self.src_crs, target_projection, *self.bounds)
 
         projected_raster_data = np.zeros((self.height, self.width))
 
         reproject(source=self.raster_data,
                   destination=projected_raster_data,
-                  src_crs=raster_reader.crs,
+                  src_crs=self.src_crs,
                   src_nodata=raster_reader.nodata,
                   src_transform=src_transform,
                   dst_crs=target_projection,

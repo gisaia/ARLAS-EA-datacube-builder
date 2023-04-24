@@ -6,6 +6,9 @@ from dataclasses import dataclass
 
 import rasterio
 import xarray as xr
+from pydantic import BaseModel, Field
+from rasterio.coords import BoundingBox
+from rasterio.crs import CRS
 from shapely.geometry import Polygon
 
 from datacube.core.geo.xarray import get_chunk_shape
@@ -17,18 +20,35 @@ TMP = "tmp"
 FINAL = "final"
 
 
+class CachedAbstractRasterArchive(BaseModel):
+    timestamp: int = Field()
+    crs: str = Field()
+    bottom: float = Field()
+    right: float = Field()
+    top: float = Field()
+    left: float = Field()
+
+
 @dataclass
 class AbstractRasterArchive(abc.ABC):
+    raster_timestamp: int
+    raster_uri: str
+
     bands_to_extract: dict[str, str]
     product_time: int
     target_resolution: float
-    raster_timestamp: int
+    src_bounds: BoundingBox = None
+    src_crs: CRS = None
 
     @abc.abstractmethod
     def __init__(self, object_store: AbstractObjectStore, raster_uri: str,
                  bands: dict[str, str], target_resolution: int,
                  raster_timestamp: int, zip_extract_path: str):
         pass
+
+    def set_raster_metadata(self, raster_uri: str, raster_timestamp: int):
+        self.raster_uri = raster_uri
+        self.raster_timestamp = raster_timestamp
 
     # Loosely inspired from
     # https://gist.github.com/lucaswells/fd2fd73c513872966c1a0257afee1887
@@ -60,6 +80,9 @@ class AbstractRasterArchive(abc.ABC):
                 # Create Raster object
                 raster = Raster(band, raster_reader,
                                 target_projection, polygon)
+
+                self.src_bounds = raster.src_bounds
+                self.src_crs = raster.src_crs
 
                 # Create zarr store
                 zarr_dir = raster.create_zarr_dir(
@@ -111,3 +134,13 @@ class AbstractRasterArchive(abc.ABC):
             shutil.rmtree(zarr_tmp_root_path)
 
         return path.join(zarr_root_path, FINAL)
+
+    def cache_information(self) -> CachedAbstractRasterArchive:
+        return CachedAbstractRasterArchive(
+            timestamp=self.raster_timestamp,
+            crs=self.src_crs.to_string(),
+            bottom=self.src_bounds.bottom,
+            right=self.src_bounds.right,
+            top=self.src_bounds.top,
+            left=self.src_bounds.left
+        )

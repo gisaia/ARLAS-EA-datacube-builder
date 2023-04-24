@@ -2,6 +2,7 @@ import os.path as path
 import re
 import zipfile
 from datetime import datetime
+from typing import ClassVar
 
 import smart_open as so
 from dateutil import parser
@@ -19,14 +20,14 @@ PRODUCT_STOP_TIME = "metadataSection/metadataObject/metadataWrap/xmlData/" + \
 
 
 class Sentinel1_Level1_Safe(AbstractRasterArchive):
-    PRODUCT_TYPE = RasterType(source="Sentinel1",
-                              format="L1-SAFE")
+    PRODUCT_TYPE: ClassVar[RasterType] = RasterType(source="Sentinel1",
+                                                    format="L1-SAFE")
 
     def __init__(self, object_store: AbstractObjectStore, raster_uri: str,
                  bands: dict[str, str], target_resolution: int,
                  raster_timestamp: int, zip_extract_path: str):
 
-        self.raster_timestamp = raster_timestamp
+        self.set_raster_metadata(raster_uri, raster_timestamp)
         self.target_resolution = target_resolution
         self.__check_bands(bands)
         self._extract_metadata(object_store, raster_uri,

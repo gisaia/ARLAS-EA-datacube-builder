@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 import base64
-import concurrent.futures
 import os
 import os.path as path
 import shutil
@@ -11,6 +10,7 @@ import mr4mp
 import numpy as np
 import xarray as xr
 from shapely.geometry import Point
+from datacube.core.cache.cache_manager import CacheManager
 
 from datacube.core.geo.utils import complete_grid
 from datacube.core.geo.xarray import (get_bounds, get_chunk_shape,
@@ -67,6 +67,7 @@ def download(input: tuple[ExtendedCubeBuildRequest, int, int]) \
         zarr_path = raster_archive.build_zarr(zarr_root_path,
                                               request.target_projection,
                                               polygon=request.roi_polygon)
+        CacheManager().put_raster(raster_archive)
 
         grouped_datasets: dict[int, list[str]] = {timestamp: [zarr_path]}
         return grouped_datasets
@@ -275,12 +276,4 @@ def __build_datacube(request: ExtendedCubeBuildRequest):
 
 def build_datacube(request: CubeBuildRequest) -> CubeBuildResult:
 
-    try:
-        with concurrent.futures.ProcessPoolExecutor() as executor:
-            f = executor.submit(__build_datacube,
-                                ExtendedCubeBuildRequest(request))
-            result = f.result()
-    except Exception as e:
-        raise e
-
-    return result
+    return __build_datacube(ExtendedCubeBuildRequest(request))

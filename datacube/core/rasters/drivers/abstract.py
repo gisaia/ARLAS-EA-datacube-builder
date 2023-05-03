@@ -13,6 +13,7 @@ from shapely.geometry import Polygon
 
 from datacube.core.geo.xarray import get_chunk_shape
 from datacube.core.models.enums import ChunkingStrategy as CStrat
+from datacube.core.models.request.rasterProductType import RasterType
 from datacube.core.object_store.drivers.abstract import AbstractObjectStore
 from datacube.core.rasters.raster import Raster
 
@@ -27,6 +28,7 @@ class CachedAbstractRasterArchive(BaseModel):
     right: float = Field()
     top: float = Field()
     left: float = Field()
+    type: RasterType = Field()
 
 
 @dataclass
@@ -137,10 +139,11 @@ class AbstractRasterArchive(abc.ABC):
 
     def cache_information(self) -> CachedAbstractRasterArchive:
         return CachedAbstractRasterArchive(
-            timestamp=self.raster_timestamp,
+            timestamp=self.product_time,
             crs=self.src_crs.to_string(),
             bottom=self.src_bounds.bottom,
             right=self.src_bounds.right,
             top=self.src_bounds.top,
-            left=self.src_bounds.left
+            left=self.src_bounds.left,
+            type=type(self).PRODUCT_TYPE
         )

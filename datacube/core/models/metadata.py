@@ -2,6 +2,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from datacube.core.models.request.rasterGroup import RasterGroup
+
 
 class Dimension(BaseModel):
     axis: str = Field()
@@ -29,8 +31,21 @@ class Variable(BaseModel):
     expression: str = Field()
 
 
+class QualityIndicators(BaseModel):
+    time_compacity: float = Field()
+    spatial_coverage: float = Field()
+    group_lightness: float = Field()
+
+
+class QualityIndicatorsCube(QualityIndicators):
+    time_regularity: float = Field()
+
+
 class DatacubeMetadata(BaseModel):
     dimensions: dict[str, Dimension] = Field()
     variables: dict[str, Variable] = Field()
-    composition: dict[int, list[str]] = Field()
+    composition: list[RasterGroup] = Field()
     preview: dict[str, str] = Field()
+    number_of_chunks: int = Field()
+    chunk_weight: int = Field()
+    quality_indicators: QualityIndicatorsCube = Field()

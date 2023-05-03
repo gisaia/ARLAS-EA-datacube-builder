@@ -20,6 +20,12 @@ class RasterType(BaseModel):
         else:
             return self.format == __o.format and self.source == __o.source
 
+    def to_key(self) -> str:
+        """
+        Returns a string version of the type to use as a key in a dictionary
+        """
+        return self.source + '-' + self.format
+
 
 class AliasedRasterType(RasterType):
     alias: str = Field(description=ALIAS_DESCRIPTION)

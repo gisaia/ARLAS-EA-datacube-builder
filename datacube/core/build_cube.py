@@ -229,7 +229,7 @@ def __build_datacube(request: ExtendedCubeBuildRequest):
     datacube = datacube[requested_bands]
 
     # Add relevant datacube metadata
-    datacube = create_datacube_metadata(request, datacube, lon_step, lat_step)
+    create_datacube_metadata(request, datacube, lon_step, lat_step)
 
     LOGGER.info("Writing datacube to Object Store")
     try:

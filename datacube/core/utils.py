@@ -39,6 +39,9 @@ def get_product_bands(request: ExtendedCubeBuildRequest,
 
 
 def get_eval_formula(band_value: str, aliases: list[AliasedRasterType]) -> str:
+    """
+    Transform the requested value of the band in a xarray operation
+    """
     def repl(match: Match[str]) -> str:
         for m in match.groups():
             return f"datacube.get('{m}')"
@@ -50,7 +53,8 @@ def get_eval_formula(band_value: str, aliases: list[AliasedRasterType]) -> str:
     return result
 
 
-def get_raster_driver(raster_product_type) -> type[AbstractRasterArchive]:
+def get_raster_driver(raster_product_type: RasterType) \
+        -> type[AbstractRasterArchive]:
     if raster_product_type == Sentinel2_Level2A_Safe.PRODUCT_TYPE:
         return Sentinel2_Level2A_Safe
     elif raster_product_type == Sentinel2_Level2A_Theia.PRODUCT_TYPE:

@@ -10,6 +10,18 @@ from shapely.wkt import loads
 EARTH_RADIUS = 6371000  # m
 
 
+def bbox2polygon(left: float, bottom: float, right: float, top:float):
+    """
+    Convert the corners of a bbox into a shapely polygon
+    """
+    lb = Point(float(left), float(bottom))
+    lt = Point(float(left), float(top))
+    rb = Point(float(right), float(bottom))
+    rt = Point(float(right), float(top))
+
+    return Polygon([lb, rb, rt, lt, lb])
+
+
 def roi2geometry(roi: str):
     """
     Convert a ROI into a shapely geometry
@@ -27,12 +39,8 @@ def roi2geometry(roi: str):
     try:
         corners = roi.split(",")
 
-        lb = Point(float(corners[0]), float(corners[1]))
-        lt = Point(float(corners[0]), float(corners[3]))
-        rb = Point(float(corners[2]), float(corners[1]))
-        rt = Point(float(corners[2]), float(corners[3]))
-
-        return Polygon([lb, rb, rt, lt, lb])
+        return bbox2polygon(float(corners[0]), float(corners[1]),
+                            float(corners[2]), float(corners[3]))
     except Exception:
         raise TypeError("Only POLYGON geometry is supported for the ROI," +
                         "in WKT or BBOX format")

@@ -1,5 +1,3 @@
-import json
-
 from fastapi.responses import JSONResponse
 from jsonref import replace_refs
 from pydantic import BaseModel
@@ -12,8 +10,6 @@ from datacube.rest.ogc.models.execute import Bbox, BinaryInputValue, Execute
 def base_model2description(model: type[BaseModel]) \
         -> dict[str, OutputDescription] | dict[str, InputDescription]:
     description: dict = replace_refs(model.schema())["properties"]
-    with open("input.json", "w") as f:
-        json.dump(description, f, indent=2)
 
     for k, v in description.items():
         result = {}
@@ -46,8 +42,6 @@ def base_model2description(model: type[BaseModel]) \
         result["schema"] = copy_v
         description[k] = {**result}
 
-    with open("test_parse.json", "w") as f:
-        json.dump(description, f, indent=2)
     return description
 
 

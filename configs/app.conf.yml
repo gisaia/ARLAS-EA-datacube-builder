@@ -1,4 +1,4 @@
-app:
+dc3-builder:
   host: "localhost"
-  port: 5000
+  port: 8080
   debug: True

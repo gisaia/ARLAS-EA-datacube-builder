@@ -4,14 +4,13 @@ from hazelcast.config import Config
 from datacube.core.rasters.drivers.abstract import (
     AbstractRasterArchive, CachedAbstractRasterArchive)
 
-CONFIG = Config()
-
 
 class CacheManager:
     __MAP_NAME = "rasters"
+    CONFIG = Config()
 
     def __init__(self):
-        self.__client = hazelcast.HazelcastClient(CONFIG)
+        self.__client = hazelcast.HazelcastClient(CacheManager.CONFIG)
         self.__map = self.__client.get_map(
             CacheManager.__MAP_NAME).blocking()
 
@@ -25,3 +24,7 @@ class CacheManager:
 
     def shutdown(self):
         self.__client.shutdown()
+
+    @classmethod
+    def set_host(cls, host: str):
+        CacheManager.CONFIG.cluster_members = [host]

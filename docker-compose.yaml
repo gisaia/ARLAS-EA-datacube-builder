@@ -1,0 +1,29 @@
+version: '3'
+services:
+  dc3-builder:
+    image: gisaia/arlas-datacube-builder:latest
+    container_name: dc3-builder
+    ports:
+      - 8080:5000
+    volumes:
+      # Input data volume
+      - $PWD/tmp/:/app/tmp/
+      # Configuration volume
+      - $PWD/configs/:/app/configs/
+      # Volume to mount for local writing of the datacubes
+      - $PWD/output/:/app/output/
+    env_file:
+      - credentials
+    environment:
+      - IS_DOCKER_LAUNCH=true
+    depends_on:
+      - hazelcast
+
+  hazelcast:
+    image: hazelcast/hazelcast:5.2
+    container_name: hazelcast
+    ports:
+      - 5701:5701
+    environment:
+      # '172.23.0.2' needs to be replaced by the host machine address that will be used for the Hazelcast communication 
+      - HZ_NETWORK_PUBLICADDRESS=172.23.0.2:5701

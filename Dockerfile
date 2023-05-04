@@ -10,10 +10,9 @@ WORKDIR /app
 RUN pip install -r requirements.txt
 
 COPY ./app.py /app/app.py
-COPY ./configs /app/configs
 COPY ./datacube /app/datacube
 
 ENTRYPOINT [ "python3" ]
 
 EXPOSE 5000
-CMD [ "app.py" , "--host", "0.0.0.0"]
+CMD [ "app.py"]

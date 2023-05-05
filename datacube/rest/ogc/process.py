@@ -10,7 +10,7 @@ from datacube.rest.ogc.models import (ExceptionType, Execute,
                                       TransmissionMode)
 from datacube.rest.ogc.utils import (base_model2description, execute2inputs,
                                      json_http_error)
-from datacube.rest.serverConfiguration import ServerConfiguration
+from datacube.rest.server.server_configuration import ServerConfiguration
 
 ROUTER = APIRouter()
 DC3_BUILDER_PROCESS = ProcessDescription(
@@ -58,7 +58,7 @@ def get_processes_list() -> ProcessList:
 
 @ROUTER.get("/processes/{process_id}",
             response_model=ProcessDescription,
-            response_model_exclude_none=True,
+            response_model_exclude_unset=True,
             responses={
                 status.HTTP_200_OK: {
                     'model': ProcessDescription

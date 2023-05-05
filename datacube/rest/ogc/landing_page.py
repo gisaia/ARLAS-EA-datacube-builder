@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from datacube.rest.ogc.models import LandingPage, Link
-from datacube.rest.serverConfiguration import ServerConfiguration
+from datacube.rest.server.server_configuration import ServerConfiguration
 
 ROUTER = APIRouter()
 

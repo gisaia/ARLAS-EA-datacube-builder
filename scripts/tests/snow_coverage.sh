@@ -104,4 +104,4 @@ curl -X POST -H "Content-Type: application/json" -d '{
             "format": "Snow"
         }
     ]
-}' http://localhost:5000/cube/build
+}' http://localhost:8080/cube/build

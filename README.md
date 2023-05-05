@@ -26,7 +26,7 @@ To start the service with python, execute the `app.py` file.
 Parameters can be set with the file `configs/app.conf.yml`, that has the following values by default:
 
 ```yaml
-app:
+dc3-builder:
   host: "localhost"
   port: 5000
   debug: True
@@ -64,21 +64,16 @@ docker build -t gisaia/arlas-datacube-builder:latest .
 
 ### Starting the REST Service
 
+When using docker to launch the service, the app will be configured using the `docker.app.conf.yml` file.
+The app can be configured the same way as locally, but is pre-configured to work as is.
+For the app to work, Hazelcast's host needs to be replaced by the host machine address that will be used for the Hazelcast communication.
+
 ```shell
-docker run --env-file credentials \
-    -p 8080:{port} \
-    gisaia/arlas-datacube-builder:latest
+docker compose up
 ```
 
 ### Caching data
 
-It is possible to start the REST service with data already available, by using the tmp folder where requested files will be downloaded. In order to do so, one can mount a volume containing them as below.
+It is possible to start the REST service with data already available, by using the tmp folder where requested files will be downloaded. By default, the directory used is `$PWD/tmp/` as specified in the `docker-compose.yaml` file, but can be changed to where your data is stored.
 
-```shell
-docker run --env-file credentials \
-    -p 8080:{port} \
-    -v /ABSOLUTE/PATH/TO/DATA/:/app/tmp \
-    gisaia/arlas-datacube-builder:latest
-```
-
-The files need to be put in the `tmp` folder as they would be when extracted from their archive.
+The files need to be stored as they would be when extracted from their archive.

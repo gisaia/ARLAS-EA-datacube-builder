@@ -1,5 +1,6 @@
 import os.path as path
 import re
+from typing import ClassVar
 from urllib.parse import urlparse
 
 import smart_open as so
@@ -12,8 +13,8 @@ from datacube.core.rasters.drivers.abstract import AbstractRasterArchive
 
 
 class Sentinel1_Theia(AbstractRasterArchive):
-    PRODUCT_TYPE = RasterType(source="Sentinel1",
-                              format="Theia")
+    PRODUCT_TYPE: ClassVar[RasterType] = RasterType(source="Sentinel1",
+                                                    format="Theia")
 
     def __init__(self, object_store: AbstractObjectStore, raster_uri: str,
                  bands: dict[str, str], target_resolution: int,
@@ -23,7 +24,7 @@ class Sentinel1_Theia(AbstractRasterArchive):
             raise DownloadError(
                 f"There is only one band in {self.PRODUCT_TYPE.source} " +
                 self.PRODUCT_TYPE.format)
-        self.raster_timestamp = raster_timestamp
+        self.set_raster_metadata(raster_uri, raster_timestamp)
         self.target_resolution = target_resolution
         self._extract_metadata(object_store, raster_uri,
                                bands, zip_extract_path)

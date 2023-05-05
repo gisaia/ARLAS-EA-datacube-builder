@@ -23,13 +23,13 @@ Docker or python3
 ## Running ARLAS-datacube-builder with python
 
 To start the service with python, execute the `app.py` file.
-Parameters can be set with the file `configs/app.conf.yml`, that has the following values by default:
+Parameters can be set with the file `configs/app.conf.yml`, that has the following structure:
 
 ```yaml
 dc3-builder:
-  host: "localhost"
-  port: 5000
-  debug: True
+  host: <HOST>
+  port: <PORT>
+  debug: <True|False>
 ```
 
 The output datacubes and previews can be configured to be written either locally or in an object store through the `storage` parameter of the `configs/outputObjectStore.yml` file. Several options are available:
@@ -68,6 +68,20 @@ When using docker to launch the service, the app will be configured using the `d
 The app can be configured the same way as locally, but is pre-configured to work as is.
 For the app to work, Hazelcast's host needs to be replaced by the host machine address that will be used for the Hazelcast communication.
 
+The configuration looks like the following:
+
+```yaml
+dc3-builder:
+  host: 0.0.0.0
+  port: <PORT>
+  debug: <True|False>
+
+hazelcast:
+  host: <HAZELCAST'S HOST MACHINE ADDRESS>
+```
+
+To launch the service, simply execute the following command:
+
 ```shell
 docker compose up
 ```
@@ -77,3 +91,17 @@ docker compose up
 It is possible to start the REST service with data already available, by using the tmp folder where requested files will be downloaded. By default, the directory used is `$PWD/tmp/` as specified in the `docker-compose.yaml` file, but can be changed to where your data is stored.
 
 The files need to be stored as they would be when extracted from their archive.
+
+## Creating datacubes in the PIVOT format
+
+The service is able to transform the desired datacubes in the PIVOT format by setting the following parameter in the `configs/app.conf.yml` or `configs/docker.app.conf.yml` file depending on the usage.
+
+It will write either locally or in an object store both the PIVOT archive and the preview.
+
+```yaml
+...
+dc3-builder:
+  ...
+  pivot_format: True
+...
+```

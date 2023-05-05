@@ -1,8 +1,8 @@
 from fastapi import APIRouter, status
 
-from datacube.core.build_cube import build_datacube
 from datacube.core.models.cubeBuildResult import CubeBuildResult
 from datacube.core.models.request.cubeBuild import CubeBuildRequest
+from datacube.rest.cube_build import build_datacube_wrapper
 from datacube.rest.ogc.models import (ExceptionType, Execute,
                                       JobControlOptions, Link, OGCException,
                                       ProcessDescription, ProcessList,
@@ -28,7 +28,7 @@ DC3_BUILDER_PROCESS = ProcessDescription(
 PROCESSES: dict[str, ProcessListItem] = {
     DC3_BUILDER_PROCESS.id: ProcessListItem(
         process=DC3_BUILDER_PROCESS,
-        method=build_datacube,
+        method=build_datacube_wrapper,
         input_model=CubeBuildRequest)
 }
 

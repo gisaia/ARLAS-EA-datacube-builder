@@ -23,9 +23,9 @@ def create_input_object_store(obj_store_type) -> AbstractObjectStore:
 
 
 def get_full_adress(destination) -> str:
-    if OUTPUT_OBJECT_STORE["storage"] == "local":
+    if is_output_storage_local():
         return join(OUTPUT_OBJECT_STORE["directory"], destination)
-    elif OUTPUT_OBJECT_STORE["storage"] == "gs":
+    elif is_output_storage_gs():
         return f"gs://{OUTPUT_OBJECT_STORE['bucket']}/{destination}"
 
 
@@ -35,10 +35,10 @@ def get_mapper_output(
     Returns the adress (local or object store) at which the desired file
     will be uploaded, as well as the mapping to write it.
     """
-    if OUTPUT_OBJECT_STORE["storage"] == "local":
+    if is_output_storage_local():
         path = get_full_adress(destination)
         return path, path
-    elif OUTPUT_OBJECT_STORE["storage"] == "gs":
+    elif is_output_storage_gs():
         url = get_full_adress(destination)
         return url, get_mapper(url, mode="w",
                                token=OUTPUT_OBJECT_STORE["api_key"])
@@ -48,14 +48,22 @@ def write_bytes(destination: str, data: bytes) -> str:
     """
     Writes bytes data to the configured storage, and returns its location.
     """
-    if OUTPUT_OBJECT_STORE["storage"] == "local":
+    if is_output_storage_local():
         path = get_full_adress(destination)
         with open(path, "wb") as f:
             f.write(data)
         return path
-    elif OUTPUT_OBJECT_STORE["storage"] == "gs":
+    elif is_output_storage_gs():
         url = get_full_adress(destination)
         client = GCSObjectStore(OUTPUT_OBJECT_STORE["api_key"]).client
         with so.open(url, "wb", transport_params={"client": client}) as fb:
             fb.write(data)
         return url
+
+
+def is_output_storage_local() -> bool:
+    return OUTPUT_OBJECT_STORE["storage"] == "local"
+
+
+def is_output_storage_gs() -> bool:
+    return OUTPUT_OBJECT_STORE["storage"] == "gs"

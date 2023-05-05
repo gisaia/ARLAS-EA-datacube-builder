@@ -2,3 +2,4 @@ dc3-builder:
   host: "localhost"
   port: 8080
   debug: True
+  pivot_format: False

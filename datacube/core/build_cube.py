@@ -3,6 +3,7 @@ import base64
 import os
 import os.path as path
 import shutil
+import time
 import traceback
 from urllib.parse import urlparse
 
@@ -10,8 +11,8 @@ import mr4mp
 import numpy as np
 import xarray as xr
 from shapely.geometry import Point
-from datacube.core.cache.cache_manager import CacheManager
 
+from datacube.core.cache.cache_manager import CacheManager
 from datacube.core.geo.utils import complete_grid
 from datacube.core.geo.xarray import (get_bounds, get_chunk_shape,
                                       merge_datasets)
@@ -21,10 +22,10 @@ from datacube.core.models.cubeBuildResult import CubeBuildResult
 from datacube.core.models.enums import ChunkingStrategy as CStrat
 from datacube.core.models.errors import (DownloadError, MosaickingError,
                                          UploadError)
-from datacube.core.models.request.cubeBuild import (CubeBuildRequest,
-                                                    ExtendedCubeBuildRequest)
+from datacube.core.models.request.cubeBuild import ExtendedCubeBuildRequest
 from datacube.core.object_store.utils import (create_input_object_store,
                                               get_mapper_output, write_bytes)
+from datacube.core.pivot.format import pivot_format_datacube
 from datacube.core.utils import (get_eval_formula, get_product_bands,
                                  get_raster_driver)
 from datacube.core.visualisation.preview import (create_preview_b64,
@@ -34,7 +35,7 @@ TMP_DIR = "tmp/"
 LOGGER = Logger.get_logger()
 
 
-def download(input: tuple[ExtendedCubeBuildRequest, int, int]) \
+def __download(input: tuple[ExtendedCubeBuildRequest, int, int]) \
         -> dict[float, list[str]]:
     """
     Builds a zarr corresponding to the requested bands for
@@ -92,7 +93,7 @@ def merge_download(result_a: dict[int, list[str]],
     return result_a
 
 
-def mosaicking(merge_input) -> xr.Dataset:
+def __mosaicking(merge_input) -> xr.Dataset:
     list_ds_adress = merge_input[0]
     lon = merge_input[1]
     lat = merge_input[2]
@@ -124,13 +125,13 @@ def mosaicking(merge_input) -> xr.Dataset:
     return merged_dataset
 
 
-def merge_mosaicking(mosaick_a: xr.Dataset,
-                     mosaick_b: xr.Dataset) -> xr.Dataset:
+def __merge_mosaicking(mosaick_a: xr.Dataset,
+                       mosaick_b: xr.Dataset) -> xr.Dataset:
     return xr.combine_by_coords(
         (mosaick_a, mosaick_b), combine_attrs="override")
 
 
-def __build_datacube(request: ExtendedCubeBuildRequest):
+def build_datacube(request: ExtendedCubeBuildRequest):
     grouped_datasets: dict[int, list[str]] = {}
 
     center_granule_idx = {"group": int, "index": int}
@@ -139,6 +140,9 @@ def __build_datacube(request: ExtendedCubeBuildRequest):
     min_distance = np.inf
 
     zarr_root_path = path.join(TMP_DIR, request.datacube_path)
+    # Remove trailing "/" if present
+    zarr_root_path = zarr_root_path if zarr_root_path[-1] != "/" \
+        else zarr_root_path[:-2]
 
     # Generate the iterable of all files to download
     download_iter = []
@@ -150,7 +154,7 @@ def __build_datacube(request: ExtendedCubeBuildRequest):
     try:
         with mr4mp.pool(close=True) as pool:
             grouped_datasets = pool.mapreduce(
-                download, merge_download, download_iter)
+                __download, merge_download, download_iter)
     except DownloadError as e:
         return e
 
@@ -200,7 +204,7 @@ def __build_datacube(request: ExtendedCubeBuildRequest):
                                        lon_step, lat_step])
 
             with mr4mp.pool(close=True) as pool:
-                datacube = pool.mapreduce(mosaicking, merge_mosaicking,
+                datacube = pool.mapreduce(__mosaicking, __merge_mosaicking,
                                           mosaicking_iter)
 
         except Exception as e:
@@ -229,33 +233,66 @@ def __build_datacube(request: ExtendedCubeBuildRequest):
     datacube = datacube[requested_bands]
 
     # Add relevant datacube metadata
-    create_datacube_metadata(request, datacube, lon_step, lat_step)
+    metadata = create_datacube_metadata(request, datacube, lon_step, lat_step)
+    datacube.attrs.update(metadata.dict())
 
-    LOGGER.info("Writing datacube to Object Store")
-    try:
-        datacube_url, mapper = get_mapper_output(request.datacube_path)
+    # Creating preview
+    preview_path = f'{zarr_root_path}.png'
+    if len(datacube.attrs["preview"]) == 3:
+        preview = create_preview_b64(datacube, request.rgb,
+                                     preview_path)
+    else:
+        preview = create_preview_b64_cmap(
+            datacube, datacube.attrs["preview"],
+            preview_path)
 
+    if request.pivot_format:
+        # Write datacube in tmp dir
+        final_datacube = f"{zarr_root_path}_{str(time.time())}"
         datacube.chunk(get_chunk_shape(
                 datacube.dims, request.chunking_strategy)) \
-            .to_zarr(mapper, mode="w") \
+            .to_zarr(final_datacube, mode="w") \
             .close()
 
-    except Exception as e:
-        LOGGER.error(e)
-        traceback.print_exc()
-        return UploadError(f"Datacube: {e.args[0]}")
+        # Format datacube to pivot
+        pivot_path, preview_file_name = pivot_format_datacube(request,
+                                                              final_datacube,
+                                                              preview_path,
+                                                              metadata)
+        shutil.rmtree(final_datacube)
+
+        LOGGER.info("Writing datacube in pivot format to Object Store")
+        try:
+            with open(pivot_path, 'rb') as ftar:
+                product_url = write_bytes(pivot_path.split("/")[-1],
+                                          ftar.read())
+            os.remove(pivot_path)
+
+        except Exception as e:
+            LOGGER.error(e)
+            traceback.print_exc()
+            return UploadError(f"Datacube: {e.args[0]}")
+
+    else:
+        LOGGER.info("Writing datacube to Object Store")
+        try:
+            product_url, mapper = get_mapper_output(request.datacube_path)
+
+            datacube.chunk(get_chunk_shape(
+                    datacube.dims, request.chunking_strategy)) \
+                .to_zarr(mapper, mode="w") \
+                .close()
+
+        except Exception as e:
+            LOGGER.error(e)
+            traceback.print_exc()
+            return UploadError(f"Datacube: {e.args[0]}")
+
+        preview_file_name = f"{request.datacube_path}.png"
 
     LOGGER.info("Uploading preview to Object Store")
     try:
-        if len(datacube.attrs["preview"]) == 3:
-            preview = create_preview_b64(datacube, request.rgb,
-                                         f'{zarr_root_path}.png')
-        else:
-            preview = create_preview_b64_cmap(
-                datacube, datacube.attrs["preview"],
-                f'{zarr_root_path}.png')
-
-        preview_url = write_bytes(f"{request.datacube_path}.png",
+        preview_url = write_bytes(preview_file_name,
                                   base64.b64decode(preview))
     except Exception as e:
         LOGGER.error(e)
@@ -266,14 +303,8 @@ def __build_datacube(request: ExtendedCubeBuildRequest):
     del datacube
     if path.exists(zarr_root_path) and path.isdir(zarr_root_path):
         shutil.rmtree(zarr_root_path)
-    os.remove(f'{zarr_root_path}.png')
 
     return CubeBuildResult(
-        datacube_url=datacube_url,
+        product_url=product_url,
         preview_url=preview_url,
         preview=preview)
-
-
-def build_datacube(request: CubeBuildRequest) -> CubeBuildResult:
-
-    return __build_datacube(ExtendedCubeBuildRequest(request))

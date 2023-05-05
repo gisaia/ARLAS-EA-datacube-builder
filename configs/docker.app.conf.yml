@@ -2,7 +2,7 @@ dc3-builder:
   # Needed for communication outside of the docker
   host: 0.0.0.0
   port: 5000
-  debug: True
+  debug: False
 
 # '172.23.0.2' needs to be replaced by the host machine address that will be used for the Hazelcast communication 
 hazelcast:

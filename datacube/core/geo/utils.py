@@ -10,7 +10,8 @@ from shapely.wkt import loads
 EARTH_RADIUS = 6371000  # m
 
 
-def bbox2polygon(left: float, bottom: float, right: float, top:float):
+def bbox2polygon(left: float, bottom: float,
+                 right: float, top: float) -> Polygon:
     """
     Convert the corners of a bbox into a shapely polygon
     """
@@ -22,7 +23,7 @@ def bbox2polygon(left: float, bottom: float, right: float, top:float):
     return Polygon([lb, rb, rt, lt, lb])
 
 
-def roi2geometry(roi: str):
+def roi2geometry(roi: str) -> Polygon:
     """
     Convert a ROI into a shapely geometry
     """

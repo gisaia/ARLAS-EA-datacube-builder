@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from datacube.core.cache.cache_manager import CacheManager
 from datacube.core.logging.logger import CustomLogger as Logger
 from datacube.rest import ROUTERS
-from datacube.rest.serverConfiguration import ServerConfiguration
+from datacube.rest.server.server_configuration import ServerConfiguration
 
 LOGGER_CONFIG_FILE = "configs/logging.json"
 
@@ -20,22 +20,22 @@ if __name__ == "__main__":
     conf = ServerConfiguration.get_server_conf()
 
     # Create app and add routes
-    app = FastAPI(debug=conf["dc3-builder"]["debug"])
+    app = FastAPI(debug=conf.dc3_builder.debug)
 
     for router in ROUTERS:
         app.include_router(router)
 
     # Set up logger
-    if not conf["dc3-builder"]["debug"]:
-        Logger.get_logger().setLevel("INFO")
+    if not conf.dc3_builder.debug:
+        Logger.get_logger().setLevel("WARN")
 
     # Change hazelcast host if specified
-    if "hazelcast" in conf:
-        CacheManager.set_host(conf["hazelcast"]["host"])
+    if conf.hazelcast:
+        CacheManager.set_host(conf.hazelcast.host)
 
     # Check if app is connected to Hazelcast
     CacheManager()
     Logger.get_logger().info("Connected to Hazelcast cache manager")
 
-    uvicorn.run(app, host=conf["dc3-builder"]["host"],
-                port=conf["dc3-builder"]["port"])
+    uvicorn.run(app, host=conf.dc3_builder.host,
+                port=conf.dc3_builder.port)

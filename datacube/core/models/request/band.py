@@ -2,7 +2,7 @@ from matplotlib import cm
 from pydantic import BaseModel, Field
 
 from datacube.core.models.enums import RGB
-from datacube.core.models.errors import BadRequest
+from datacube.core.models.exception import BadRequest
 
 NAME_DESCRIPTION = "The name of the band requested."
 VALUE_DESCRIPTION = "The expression to create the desired band. Can be " + \

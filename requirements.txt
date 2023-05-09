@@ -10,11 +10,11 @@ werkzeug==2.1.2
 lxml==4.8.0
 zarr==2.8.1
 rioxarray==0.12.2
-google-cloud-storage
-fsspec
+google-cloud-storage==2.5.0
+fsspec==2022.10.0
 scipy==1.8.1
-gcsfs
-dask
+gcsfs==2022.10.0
+dask==2022.8.0
 mr4mp==2.6.2
 Pillow==9.0.1
 matplotlib==3.5.2
@@ -22,4 +22,5 @@ fastapi==0.95.0
 uvicorn==0.21.1
 jsonref==1.1.0
 hazelcast-python-client==5.2.0
+attrs==22.2.0
 pyproj==3.4.1

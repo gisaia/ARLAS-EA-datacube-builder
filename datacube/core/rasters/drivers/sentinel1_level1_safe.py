@@ -8,7 +8,7 @@ import smart_open as so
 from dateutil import parser
 from lxml import etree
 
-from datacube.core.models.errors import DownloadError
+from datacube.core.models.exception import DownloadError
 from datacube.core.models.request.rasterProductType import RasterType
 from datacube.core.object_store.drivers.abstract import AbstractObjectStore
 from datacube.core.rasters.drivers.abstract import AbstractRasterArchive
@@ -44,7 +44,8 @@ class Sentinel1_Level1_Safe(AbstractRasterArchive):
             elif band == "grd-vv":
                 continue
             else:
-                raise DownloadError(f"Band '{band}' not found")
+                raise DownloadError(title=self.raster_uri,
+                                    detail=f"Band '{band}' not found")
 
     def _extract_metadata(self, object_store: AbstractObjectStore,
                           raster_uri: str, bands: dict[str, str],
@@ -76,8 +77,8 @@ class Sentinel1_Level1_Safe(AbstractRasterArchive):
                         break
 
                 if not hasattr(self, 'product_time'):
-                    raise DownloadError(
-                        f"{self.raster_uri}'s production time was not found")
+                    raise DownloadError(title=self.raster_uri,
+                                        detail="Production time was not found")
 
                 for datacube_band, product_band in bands.items():
                     for f_name in file_names:
@@ -91,5 +92,6 @@ class Sentinel1_Level1_Safe(AbstractRasterArchive):
                                 zip_extract_path, f_name)
 
                 if len(bands) != len(self.bands_to_extract):
-                    raise DownloadError("Some of the required files " +
-                                        "were not found")
+                    raise DownloadError(title=self.raster_uri,
+                                        detail="Some of the required files " +
+                                               "were not found")

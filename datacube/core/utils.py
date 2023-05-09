@@ -1,7 +1,7 @@
 import re
 from typing import Match
 
-from datacube.core.models.errors import BadRequest
+from datacube.core.models.exception import BadRequest
 from datacube.core.models.request.cubeBuild import ExtendedCubeBuildRequest
 from datacube.core.models.request.rasterProductType import (AliasedRasterType,
                                                             RasterType)

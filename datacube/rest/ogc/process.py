@@ -1,15 +1,17 @@
 from fastapi import APIRouter, status
+from pydantic import BaseModel
 
 from datacube.core.models.cubeBuildResult import CubeBuildResult
+from datacube.core.models.exception import AbstractException as OGCException
 from datacube.core.models.request.cubeBuild import CubeBuildRequest
 from datacube.rest.cube_build import build_datacube_wrapper
+from datacube.rest.models.restException import RESTException
 from datacube.rest.ogc.models import (ExceptionType, Execute,
-                                      JobControlOptions, Link, OGCException,
+                                      JobControlOptions, Link,
                                       ProcessDescription, ProcessList,
                                       ProcessListItem, ProcessSummary,
                                       TransmissionMode)
-from datacube.rest.ogc.utils import (base_model2description, execute2inputs,
-                                     json_http_error)
+from datacube.rest.ogc.utils import base_model2description, execute2inputs
 from datacube.rest.server.server_configuration import ServerConfiguration
 
 ROUTER = APIRouter()
@@ -64,24 +66,38 @@ def get_processes_list() -> ProcessList:
                     'model': ProcessDescription
                     },
                 status.HTTP_404_NOT_FOUND: {
-                    'model': OGCException
+                    'model': RESTException
+                },
+                status.HTTP_422_UNPROCESSABLE_ENTITY: {
+                    'model': RESTException
                 }
             })
 def get_process_summary(process_id: str):
     if process_id not in PROCESSES.keys():
-        return json_http_error(status.HTTP_404_NOT_FOUND,
-                               ExceptionType.URI_NOT_FOUND.value,
-                               detail=f"'{process_id}' is not a valid id.")
+        raise OGCException(type=ExceptionType.URI_NOT_FOUND.value,
+                           status=status.HTTP_404_NOT_FOUND,
+                           detail=f"'{process_id}' is not a valid id.")
     return PROCESSES[process_id].process
 
 
 @ROUTER.post("/processes/{process_id}/execute",
-             response_model_exclude_none=True)
+             response_model_exclude_none=True,
+             responses={
+                status.HTTP_200_OK: {
+                    'model': BaseModel
+                    },
+                status.HTTP_404_NOT_FOUND: {
+                    'model': RESTException
+                },
+                status.HTTP_422_UNPROCESSABLE_ENTITY: {
+                    'model': RESTException
+                }
+             })
 def post_process_execute(process_id: str, execute: Execute):
     if process_id not in PROCESSES.keys():
-        return json_http_error(status.HTTP_404_NOT_FOUND,
-                               ExceptionType.URI_NOT_FOUND.value,
-                               detail=f"'{process_id}' is not a valid id.")
+        raise OGCException(type=ExceptionType.URI_NOT_FOUND.value,
+                           status=status.HTTP_404_NOT_FOUND,
+                           detail=f"'{process_id}' is not a valid id.")
     process = PROCESSES[process_id]
 
     return process.method(process.input_model(**execute2inputs(execute)))

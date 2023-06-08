@@ -20,8 +20,8 @@ from datacube.core.logging.logger import CustomLogger as Logger
 from datacube.core.metadata import create_datacube_metadata
 from datacube.core.models.cubeBuildResult import CubeBuildResult
 from datacube.core.models.enums import ChunkingStrategy as CStrat
-from datacube.core.models.errors import (DownloadError, MosaickingError,
-                                         UploadError)
+from datacube.core.models.exception import (DownloadError, MosaickingError,
+                                            UploadError)
 from datacube.core.models.request.cubeBuild import ExtendedCubeBuildRequest
 from datacube.core.object_store.utils import (create_input_object_store,
                                               get_mapper_output, write_bytes)
@@ -72,11 +72,13 @@ def __download(input: tuple[ExtendedCubeBuildRequest, int, int]) \
 
         grouped_datasets: dict[int, list[str]] = {timestamp: [zarr_path]}
         return grouped_datasets
-
     except Exception as e:
         LOGGER.error(f"[group-{group_idx}:file-{file_idx}]")
         traceback.print_exc()
-        raise DownloadError(e.args[0])
+        if isinstance(e, DownloadError):
+            raise e
+        raise DownloadError(title=f"[group-{group_idx}:file-{file_idx}]",
+                            detail=e.args[0])
 
 
 def merge_download(result_a: dict[int, list[str]],
@@ -156,7 +158,7 @@ def build_datacube(request: ExtendedCubeBuildRequest):
             grouped_datasets = pool.mapreduce(
                 __download, merge_download, download_iter)
     except DownloadError as e:
-        return e
+        raise e
 
     for timestamp, ds_list in grouped_datasets.items():
         for idx, ds_adress in enumerate(ds_list):
@@ -210,7 +212,7 @@ def build_datacube(request: ExtendedCubeBuildRequest):
         except Exception as e:
             LOGGER.error(e)
             traceback.print_exc()
-            return MosaickingError(e.args[0])
+            raise MosaickingError(detail=e.args[0])
     else:
         first_ds = grouped_datasets[list(grouped_datasets.keys())[0]][0]
         with xr.open_zarr(first_ds) as ds:
@@ -271,7 +273,7 @@ def build_datacube(request: ExtendedCubeBuildRequest):
         except Exception as e:
             LOGGER.error(e)
             traceback.print_exc()
-            return UploadError(f"Datacube: {e.args[0]}")
+            raise UploadError(detail=f"Datacube: {e.args[0]}")
 
     else:
         LOGGER.info("Writing datacube to Object Store")
@@ -286,7 +288,7 @@ def build_datacube(request: ExtendedCubeBuildRequest):
         except Exception as e:
             LOGGER.error(e)
             traceback.print_exc()
-            return UploadError(f"Datacube: {e.args[0]}")
+            raise UploadError(detail=f"Datacube: {e.args[0]}")
 
         preview_file_name = f"{request.datacube_path}.png"
 
@@ -297,7 +299,7 @@ def build_datacube(request: ExtendedCubeBuildRequest):
     except Exception as e:
         LOGGER.error(e)
         traceback.print_exc()
-        return UploadError(f"Preview: {e.args[0]}")
+        raise UploadError(detail=f"Preview: {e.args[0]}")
 
     # Clean up the files created
     del datacube

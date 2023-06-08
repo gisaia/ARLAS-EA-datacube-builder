@@ -8,7 +8,7 @@ import smart_open as so
 from dateutil import parser
 from lxml import etree
 
-from datacube.core.models.errors import DownloadError
+from datacube.core.models.exception import DownloadError
 from datacube.core.models.request.rasterProductType import RasterType
 from datacube.core.object_store.drivers.abstract import AbstractObjectStore
 from datacube.core.rasters.drivers.abstract import AbstractRasterArchive
@@ -68,7 +68,8 @@ class Sentinel2_Level2A_Safe(AbstractRasterArchive):
             elif band == "B09":
                 self.bandsWithResolution[band] = LOW_RESOLUTION
             elif band == "B10":
-                raise DownloadError("Band 'B10' does not exist" +
+                raise DownloadError(title=self.raster_uri,
+                                    detail="Band 'B10' does not exist" +
                                     "in Sentinel2-L2A files")
             elif band == "B11":
                 self._bandAvailableMedAndLowResolution(band)
@@ -81,7 +82,8 @@ class Sentinel2_Level2A_Safe(AbstractRasterArchive):
             elif band == "WVP":
                 self._bandAvailableEveryResolution(band)
             else:
-                raise DownloadError(f"Band '{band}' not found")
+                raise DownloadError(title=self.raster_uri,
+                                    detail=f"Band '{band}' not found")
 
         # target_resolution can not be higher than the resolutions of the bands
         self.target_resolution = min(self.target_resolution,
@@ -131,8 +133,8 @@ class Sentinel2_Level2A_Safe(AbstractRasterArchive):
                         break
 
                 if not hasattr(self, 'product_time'):
-                    raise DownloadError(
-                        f"{self.raster_uri}'s production time was not found")
+                    raise DownloadError(title=self.raster_uri,
+                                        detail="Production time was not found")
 
                 for datacube_band, product_band in bands.items():
                     bandResolution = self.bandsWithResolution[product_band]
@@ -148,5 +150,6 @@ class Sentinel2_Level2A_Safe(AbstractRasterArchive):
                                 zip_extract_path, f_name)
 
                 if len(bands) != len(self.bands_to_extract):
-                    raise DownloadError("Some of the required files " +
-                                        "were not found")
+                    raise DownloadError(title=self.raster_uri,
+                                        detail="Some of the required files " +
+                                               "were not found")

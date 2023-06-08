@@ -2,8 +2,8 @@ import abc
 import os
 import os.path as path
 import shutil
-from dataclasses import dataclass
 
+import attrs
 import rasterio
 import xarray as xr
 from pydantic import BaseModel, Field
@@ -31,7 +31,7 @@ class CachedAbstractRasterArchive(BaseModel):
     type: RasterType = Field()
 
 
-@dataclass
+@attrs.define
 class AbstractRasterArchive(abc.ABC):
     raster_timestamp: int
     raster_uri: str

@@ -4,7 +4,7 @@ from shapely.geometry import Polygon
 from datacube.core.geo.utils import roi2geometry
 from datacube.core.models.enums import RGB
 from datacube.core.models.enums import ChunkingStrategy as CStrat
-from datacube.core.models.errors import BadRequest
+from datacube.core.models.exception import BadRequest
 from datacube.core.models.request.band import Band
 from datacube.core.models.request.rasterGroup import RasterGroup
 from datacube.core.models.request.rasterProductType import (AliasedRasterType,

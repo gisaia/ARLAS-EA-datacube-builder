@@ -8,7 +8,7 @@ import smart_open as so
 from dateutil import parser
 from lxml import etree
 
-from datacube.core.models.errors import DownloadError
+from datacube.core.models.exception import DownloadError
 from datacube.core.models.request.rasterProductType import RasterType
 from datacube.core.object_store.drivers.abstract import AbstractObjectStore
 from datacube.core.rasters.drivers.abstract import AbstractRasterArchive
@@ -41,7 +41,8 @@ class Sentinel2_Level2A_Theia(AbstractRasterArchive):
         self.bandsWithResolution = {}
         for band in bands.values():
             if band == "B1":
-                raise DownloadError("Band B1 does not exist " +
+                raise DownloadError(title=self.raster_uri,
+                                    detail="Band B1 does not exist " +
                                     "in this file format")
             elif band == "B2":
                 self.bandsWithResolution[band] = HIGH_RESOLUTION
@@ -60,17 +61,20 @@ class Sentinel2_Level2A_Theia(AbstractRasterArchive):
             elif band == "B8A":
                 self.bandsWithResolution[band] = MED_RESOLUTION
             elif band == "B9":
-                raise DownloadError("Band 'B9' does not exist " +
+                raise DownloadError(title=self.raster_uri,
+                                    detail="Band 'B9' does not exist " +
                                     "in this file format")
             elif band == "B10":
-                raise DownloadError("Band 'B10' does not exist " +
+                raise DownloadError(title=self.raster_uri,
+                                    detail="Band 'B10' does not exist " +
                                     "in this file format")
             elif band == "B11":
                 self.bandsWithResolution[band] = MED_RESOLUTION
             elif band == "B12":
                 self.bandsWithResolution[band] = MED_RESOLUTION
             else:
-                raise DownloadError(f"Band '{band}' not found")
+                raise DownloadError(title=self.raster_uri,
+                                    detail=f"Band '{band}' not found")
 
         # target_resolution can not be higher than the resolutions of the bands
         self.target_resolution = min(self.target_resolution,
@@ -101,8 +105,8 @@ class Sentinel2_Level2A_Theia(AbstractRasterArchive):
                         break
 
                 if not hasattr(self, 'product_time'):
-                    raise DownloadError(
-                        f"{self.raster_uri}'s production time was not found")
+                    raise DownloadError(title=self.raster_uri,
+                                        detail="Production time was not found")
 
                 for datacube_band, product_band in bands.items():
                     for f_name in file_names:
@@ -115,5 +119,6 @@ class Sentinel2_Level2A_Theia(AbstractRasterArchive):
                                 zip_extract_path, f_name)
 
                 if len(bands) != len(self.bands_to_extract):
-                    raise DownloadError("Some of the required files " +
-                                        "were not found")
+                    raise DownloadError(title=self.raster_uri,
+                                        detail="Some of the required files " +
+                                               "were not found")

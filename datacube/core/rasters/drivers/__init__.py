@@ -1,6 +1,7 @@
 from .abstract import AbstractRasterArchive
 from .sentinel1_level1_safe import Sentinel1_Level1_Safe
 from .sentinel1_theia import Sentinel1_Theia
+from .sentinel2_level1C_pivot import Sentinel2_Level1C_Pivot
 from .sentinel2_level2A_safe import Sentinel2_Level2A_Safe
 from .sentinel2_level2A_theia import Sentinel2_Level2A_Theia
 from .theia_snow import TheiaSnow

@@ -59,7 +59,6 @@ class TheiaSnow(AbstractRasterArchive):
                     if re.match(r".*/.*\_ALL\.xml", f_name):
                         if not path.exists(zip_extract_path + f_name):
                             raster_zip.extract(f_name, zip_extract_path)
-                        raster_zip.extract(f_name, zip_extract_path)
                         metadata: etree._ElementTree = etree.parse(
                             zip_extract_path + f_name)
                         root: etree._Element = metadata.getroot()
@@ -69,6 +68,10 @@ class TheiaSnow(AbstractRasterArchive):
                                 PRODUCT_TIME,
                                 namespaces=root.nsmap)[0].text)))
                         break
+
+                if not hasattr(self, 'product_time'):
+                    raise DownloadError(
+                        f"{self.raster_uri}'s production time was not found")
 
                 for datacube_band, product_band in bands.items():
                     for f_name in file_names:

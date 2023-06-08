@@ -35,9 +35,9 @@ Dimension = Annotated[HorizontalSpatialDimension | TemporalDimension,
 class Variable(BaseModel):
     dimensions: list[str] = Field()
     type: str = Field()
-    description: str = Field()
-    extent: list[float | int | str | None] = Field()
-    unit: str = Field()
+    description: str | None = Field()
+    extent: list[float | int | str] = Field()
+    unit: str | None = Field()
     expression: str = Field()
 
 

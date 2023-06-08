@@ -59,7 +59,7 @@ def create_datacube_metadata(request: ExtendedCubeBuildRequest,
             type="data", description=band.description,
             extent=[datacube.get(band.name).min().values.tolist(),
                     datacube.get(band.name).max().values.tolist()],
-            unit="", expression=band.value
+            expression=band.value
         )
 
     # If all colors have been assigned, use them for the preview

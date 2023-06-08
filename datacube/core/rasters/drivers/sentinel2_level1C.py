@@ -11,6 +11,7 @@ PRODUCT_START_TIME = "n1:General_Info/Product_Info/PRODUCT_START_TIME"
 PRODUCT_STOP_TIME = "n1:General_Info/Product_Info/PRODUCT_STOP_TIME"
 
 
+@DeprecationWarning
 class Sentinel2_Level1C(AbstractRasterArchive):
 
     def __init__(self, raster_path, bands, zip_extract_path="tmp/"):

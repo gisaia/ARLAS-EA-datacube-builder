@@ -8,6 +8,7 @@ from datacube.core.models.request.rasterProductType import (AliasedRasterType,
 from datacube.core.rasters.drivers import (AbstractRasterArchive,
                                            Sentinel1_Level1_Safe,
                                            Sentinel1_Theia,
+                                           Sentinel2_Level1C_Pivot,
                                            Sentinel2_Level2A_Safe,
                                            Sentinel2_Level2A_Theia, TheiaSnow)
 
@@ -65,6 +66,8 @@ def get_raster_driver(raster_product_type: RasterType) \
         return Sentinel1_Level1_Safe
     elif raster_product_type == TheiaSnow.PRODUCT_TYPE:
         return TheiaSnow
+    elif raster_product_type == Sentinel2_Level1C_Pivot.PRODUCT_TYPE:
+        return Sentinel2_Level1C_Pivot
     else:
         raise BadRequest(
             f"Archive type '{raster_product_type}' does not have a driver")

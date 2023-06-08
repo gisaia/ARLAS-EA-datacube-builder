@@ -45,6 +45,10 @@ class Sentinel1_Theia(AbstractRasterArchive):
             self.product_time = int(parser.parse(
                 re.findall(r".*\_(\w*)\.tiff", f_name)[0]).timestamp())
 
+            if not hasattr(self, 'product_time'):
+                raise DownloadError(
+                    f"{self.raster_uri}'s production time was not found")
+
             if not path.exists(zip_extract_path + f_name):
                 with open(path.join(zip_extract_path, f_name), "wb") as f:
                     f.write(fileCloud.read())

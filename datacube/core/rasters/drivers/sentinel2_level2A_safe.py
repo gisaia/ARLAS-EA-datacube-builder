@@ -116,7 +116,6 @@ class Sentinel2_Level2A_Safe(AbstractRasterArchive):
                     if re.match(r".*MTD_MSI.*\.xml", f_name):
                         if not path.exists(zip_extract_path + f_name):
                             raster_zip.extract(f_name, zip_extract_path)
-                        raster_zip.extract(f_name, zip_extract_path)
                         metadata: etree._ElementTree = etree.parse(
                             zip_extract_path + f_name)
                         root: etree._Element = metadata.getroot()
@@ -130,6 +129,10 @@ class Sentinel2_Level2A_Safe(AbstractRasterArchive):
                             (datetime.timestamp(start_time)
                              + datetime.timestamp(end_time)) / 2)
                         break
+
+                if not hasattr(self, 'product_time'):
+                    raise DownloadError(
+                        f"{self.raster_uri}'s production time was not found")
 
                 for datacube_band, product_band in bands.items():
                     bandResolution = self.bandsWithResolution[product_band]

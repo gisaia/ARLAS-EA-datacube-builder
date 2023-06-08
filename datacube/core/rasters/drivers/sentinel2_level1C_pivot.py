@@ -1,27 +1,26 @@
+import json
 import os.path as path
 import re
-import zipfile
+import tarfile
 from datetime import datetime
 from typing import ClassVar
 
 import smart_open as so
-from dateutil import parser
-from lxml import etree
 
 from datacube.core.models.errors import DownloadError
 from datacube.core.models.request.rasterProductType import RasterType
 from datacube.core.object_store.drivers.abstract import AbstractObjectStore
 from datacube.core.rasters.drivers.abstract import AbstractRasterArchive
 
-PRODUCT_START_TIME = "metadataSection/metadataObject/metadataWrap/xmlData/" + \
-    "safe:acquisitionPeriod/safe:start_time"
-PRODUCT_STOP_TIME = "metadataSection/metadataObject/metadataWrap/xmlData/" + \
-    "safe:acquisitionPeriod/safe:stopTime"
+PRODUCT_TIME = "Product_Characteristics/ACQUISITION_DATE"
+
+# Different resolutions in meters of the Sentinel2 Level1C files
+HIGH_RESOLUTION = 10
 
 
-class Sentinel1_Level1_Safe(AbstractRasterArchive):
-    PRODUCT_TYPE: ClassVar[RasterType] = RasterType(source="Sentinel1",
-                                                    format="L1-SAFE")
+class Sentinel2_Level1C_Pivot(AbstractRasterArchive):
+    PRODUCT_TYPE: ClassVar[RasterType] = RasterType(source="Sentinel2",
+                                                    format="L1C-Pivot")
 
     def __init__(self, object_store: AbstractObjectStore, raster_uri: str,
                  bands: dict[str, str], target_resolution: int,
@@ -35,13 +34,17 @@ class Sentinel1_Level1_Safe(AbstractRasterArchive):
 
     def __check_bands(self, bands: dict[str, str]):
         for band in bands.values():
-            if band == "grd-hh":
+            if re.match(r"B0[0-9]", band):
                 continue
-            elif band == "grd-hv":
+            elif band == "B8A":
                 continue
-            elif band == "grd-vh":
+            elif band == "B10":
                 continue
-            elif band == "grd-vv":
+            elif band == "B11":
+                continue
+            elif band == "B12":
+                continue
+            elif band == "TCI":
                 continue
             else:
                 raise DownloadError(f"Band '{band}' not found")
@@ -54,25 +57,19 @@ class Sentinel1_Level1_Safe(AbstractRasterArchive):
         params = {'client': object_store.client}
 
         with so.open(raster_uri, "rb", transport_params=params) as fb:
-            with zipfile.ZipFile(fb) as raster_zip:
-                file_names = raster_zip.namelist()
+            with tarfile.open(fileobj=fb) as raster_tar:
+                file_names = raster_tar.getnames()
                 # Extract timestamp of production of the product
                 for f_name in file_names:
-                    if re.match(r".*/manifest\.safe", f_name):
+                    if re.match(r".*/CAT_S2A_MSI__L1C_.*.JSON", f_name):
                         if not path.exists(zip_extract_path + f_name):
-                            raster_zip.extract(f_name, zip_extract_path)
-                        metadata: etree._ElementTree = etree.parse(
-                            zip_extract_path + f_name)
-                        root: etree._Element = metadata.getroot()
-                        start_time = parser.parse(root.xpath(
-                            PRODUCT_START_TIME, namespaces=root.nsmap)[0].text)
-
-                        end_time = parser.parse(root.xpath(
-                            PRODUCT_STOP_TIME, namespaces=root.nsmap)[0].text)
-
-                        self.product_time = int(
-                            (datetime.timestamp(start_time)
-                             + datetime.timestamp(end_time)) / 2)
+                            raster_tar.extract(f_name, zip_extract_path)
+                        with open(zip_extract_path + f_name, 'r') as f:
+                            product_datetime: str = json.load(
+                                f)["properties"]["datetime"]
+                            self.product_time = datetime.timestamp(
+                                datetime.fromisoformat(
+                                    product_datetime.replace('Z', '+00:00')))
                         break
 
                 if not hasattr(self, 'product_time'):
@@ -81,11 +78,10 @@ class Sentinel1_Level1_Safe(AbstractRasterArchive):
 
                 for datacube_band, product_band in bands.items():
                     for f_name in file_names:
-                        if re.match(r".*/measurement/.*" +
-                                    rf"{product_band}.*\.tiff", f_name):
-
+                        if re.match(rf".*/IMG_MSI_{product_band}_10m" +
+                                    r"_S2A_MSI__L1C_.*\.JP2", f_name):
                             if not path.exists(zip_extract_path + f_name):
-                                raster_zip.extract(f_name, zip_extract_path)
+                                raster_tar.extract(f_name, zip_extract_path)
 
                             self.bands_to_extract[datacube_band] = path.join(
                                 zip_extract_path, f_name)

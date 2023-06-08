@@ -51,8 +51,10 @@ class CubeBuildRequest(BaseModel):
 class ExtendedCubeBuildRequest(CubeBuildRequest, arbitrary_types_allowed=True):
     roi_polygon: Polygon = Field(default=Polygon())
     rgb: dict[RGB, str] = Field(default={})
+    pivot_format: bool | None = Field(
+        description="Whether to put the datacube in pivot format")
 
-    def __init__(self, request: CubeBuildRequest):
+    def __init__(self, request: CubeBuildRequest, pivot_format=None):
         super().__init__(**request.dict())
 
         self.roi_polygon = roi2geometry(request.roi)
@@ -79,3 +81,5 @@ class ExtendedCubeBuildRequest(CubeBuildRequest, arbitrary_types_allowed=True):
                              "with a set 'rgb' value or 'RED', 'GREEN' " +
                              "and 'BLUE' should be assigned to " +
                              "the bands of the datacube.")
+
+        self.pivot_format = pivot_format

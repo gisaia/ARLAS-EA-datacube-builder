@@ -54,7 +54,7 @@ class AbstractRasterArchive(abc.ABC):
 
     # Loosely inspired from
     # https://gist.github.com/lucaswells/fd2fd73c513872966c1a0257afee1887
-    def build_zarr(self, zarr_root_path, target_projection: str,
+    def build_zarr(self, zarr_root_path: str, target_projection: str,
                    polygon: Polygon = None) -> str:
         """
         Build a chunked and zarr from raster files.

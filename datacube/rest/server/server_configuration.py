@@ -38,6 +38,11 @@ class ServerConfiguration:
 
     @classmethod
     def get_server_root(cls) -> str:
-        conf: dict = cls.get_server_conf()["dc3-builder"]
+        conf = cls.get_server_conf().dc3_builder
 
-        return f"http://{conf['host']}:{conf['port']}"
+        return f"http://{conf.host}:{conf.port}"
+
+    @classmethod
+    def is_pivot_format(cls) -> bool:
+        pivot_format = cls.get_server_conf().dc3_builder.pivot_format
+        return pivot_format is not None and pivot_format

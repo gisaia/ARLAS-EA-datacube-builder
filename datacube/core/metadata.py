@@ -8,7 +8,7 @@ from shapely.geometry import Polygon
 from datacube.core.cache.cache_manager import CacheManager
 from datacube.core.geo.utils import bbox2polygon, project_polygon
 from datacube.core.models.enums import RGB
-from datacube.core.models.metadata import (DatacubeMetadata,
+from datacube.core.models.metadata import (DatacubeMetadata, DimensionType,
                                            HorizontalSpatialDimension,
                                            QualityIndicators,
                                            QualityIndicatorsCube,
@@ -20,32 +20,36 @@ from datacube.core.rasters.drivers.abstract import CachedAbstractRasterArchive
 
 def create_datacube_metadata(request: ExtendedCubeBuildRequest,
                              datacube: xr.Dataset, x_step: float | int | None,
-                             y_step: float | int | None):
+                             y_step: float | int | None) -> DatacubeMetadata:
     # Remove metdata created during datacube creation
     datacube.attrs = {}
 
     dimensions = {}
     dimensions["x"] = HorizontalSpatialDimension(
-        axis="x", description="",
+        type=DimensionType.SPATIAL, axis="x", description="",
         extent=[float(datacube.get("x").values[0]),
                 float(datacube.get("x").values[-1])],
         step=x_step, reference_system=request.target_projection
     )
 
     dimensions["y"] = HorizontalSpatialDimension(
-        axis="y", description="",
+        type=DimensionType.SPATIAL, axis="y", description="",
         extent=[float(datacube.get("y").values[0]),
                 float(datacube.get("y").values[-1])],
         step=y_step, reference_system=request.target_projection
     )
 
+    t_step = None
+    if len(datacube.get("t")) != 1:
+        t_step = str(datacube.get("t").diff("t").sum().values
+                     / (len(datacube.get("t")) - 1))
     dimensions["t"] = TemporalDimension(
-        axis="t", description="",
+        type=DimensionType.TEMPORAL.value, axis="t", description="",
         extent=[datetime.fromtimestamp(
                     datacube.get("t").values[0]).isoformat(),
                 datetime.fromtimestamp(
                     datacube.get("t").values[-1]).isoformat()],
-        step=None
+        step=t_step
     )
 
     variables = {}
@@ -193,14 +197,22 @@ def create_datacube_metadata(request: ExtendedCubeBuildRequest,
             map(lambda g: g['group_lightness'], group_indicators.values())),
         time_regularity=compute_time_regularity(request.composition))
 
-    metadata = DatacubeMetadata(dimensions=dimensions,
-                                variables=variables,
-                                composition=request.composition,
-                                preview=preview,
-                                number_of_chunks=number_of_chunks,
-                                chunk_weight=chunk_weight,
-                                quality_indicators=cube_indicators)
-    datacube.attrs.update(metadata.dict())
+    # Fill ratio is the average of how much each band is filled
+    fill_ratio = 0
+    cube_size = len(datacube.x) * len(datacube.y) * len(datacube.t)
+    for band in datacube.data_vars.values():
+        fill_ratio += 1 - band.isnull().sum().compute().values / cube_size
+    fill_ratio = fill_ratio / len(datacube.data_vars)
+
+    return DatacubeMetadata(**{
+        "cube:dimensions": dimensions,
+        "cube:variables": variables,
+        "dc3:composition": request.composition,
+        "dc3:preview": preview,
+        "dc3:number_of_chunks": number_of_chunks,
+        "dc3:chunk_weight": chunk_weight,
+        "dc3:quality_indicators": cube_indicators,
+        "dc3:fill_ratio": fill_ratio})
 
 
 def compute_time_compacity(rasters: list[CachedAbstractRasterArchive],
@@ -266,6 +278,9 @@ def compute_time_regularity(composition: list[RasterGroup]) -> float:
 
     The time regularity corresponds to 1 - std(timeDeltas)/avg(timeDeltas).
     """
+    if len(composition) == 1:
+        return 1
+
     delta_times = []
 
     for i in range(len(composition) - 1):

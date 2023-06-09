@@ -236,7 +236,7 @@ def build_datacube(request: ExtendedCubeBuildRequest):
 
     # Add relevant datacube metadata
     metadata = create_datacube_metadata(request, datacube, lon_step, lat_step)
-    datacube.attrs.update(metadata.dict())
+    datacube.attrs.update(metadata.dict(exclude_unset=True))
 
     # Creating preview
     preview_path = f'{zarr_root_path}.png'

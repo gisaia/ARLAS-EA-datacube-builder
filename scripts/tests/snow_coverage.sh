@@ -93,7 +93,8 @@ curl -X POST -H "Content-Type: application/json" -d '{
         {
             "name": "SCD",
             "value": "Snow.SCD / 365",
-            "description": "Snow Coverage Duration"
+            "description": "Snow Coverage Duration",
+            "unit": "% of the year"
         }
     ],
     "target_resolution": 20,

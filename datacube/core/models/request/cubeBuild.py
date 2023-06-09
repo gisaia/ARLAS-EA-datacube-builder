@@ -1,3 +1,6 @@
+import os.path as path
+import re
+
 from pydantic import BaseModel, Field
 from shapely.geometry import Polygon
 
@@ -9,6 +12,7 @@ from datacube.core.models.request.band import Band
 from datacube.core.models.request.rasterGroup import RasterGroup
 from datacube.core.models.request.rasterProductType import (AliasedRasterType,
                                                             RasterType)
+from datacube.core.storage.utils import get_local_root_directory
 
 COMPOSITION_DESCRIPTION = "The composition is an array of raster groups " + \
                           "that each represent a temporal slice of " + \
@@ -64,22 +68,37 @@ class ExtendedCubeBuildRequest(CubeBuildRequest, arbitrary_types_allowed=True):
         for group in self.composition:
             for file in group.rasters:
                 if file.type not in aliased_types:
-                    raise BadRequest("Aliases were not defined for type: " +
-                                     f"source:{file.type.source}, " +
-                                     f"format:{file.type.format}")
+                    raise BadRequest(title="Aliases not defined",
+                                     detail=f"source:{file.type.source}, " +
+                                            f"format:{file.type.format}")
+                if re.match(r"^\/|^file:", file.path):
+                    raise BadRequest(title="File paths can't be absolute",
+                                     detail=file.path)
+                if re.search(r"\/\.\.\/", file.path):
+                    raise BadRequest(title="Paths can't include '/../' " +
+                                           "to reach the previous folder",
+                                     detail=file.path)
+
+                if not re.search(r":\/\/", file.path):
+                    file.path = path.join(get_local_root_directory(),
+                                          file.path)
+                    if not path.exists(file.path):
+                        raise BadRequest(title="Path does not exist",
+                                         detail=file.path)
 
         for band in self.bands:
             band.check_visualistion()
             if band.rgb is not None:
                 if band.rgb in self.rgb:
-                    raise BadRequest(
-                        f"Too many bands given for color {band.rgb.value}")
+                    raise BadRequest(title="Too many bands given for color",
+                                     detail=band.rgb.value)
                 self.rgb[band.rgb] = band.name
 
         if len(self.rgb) != 3 and len(self.rgb) != 0:
-            raise BadRequest("The request should either contain no bands " +
-                             "with a set 'rgb' value or 'RED', 'GREEN' " +
-                             "and 'BLUE' should be assigned to " +
-                             "the bands of the datacube.")
+            raise BadRequest(title="Wrong definition of RGB bands",
+                             detail="The request should either contain no " +
+                                    "bands with a set 'rgb' value or 'RED', " +
+                                    "'GREEN' and 'BLUE' should be assigned " +
+                                    "to the bands of the datacube.")
 
         self.pivot_format = pivot_format

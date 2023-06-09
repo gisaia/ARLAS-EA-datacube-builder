@@ -4,15 +4,27 @@
 
 ARLAS-datacube-builder is a REST service for building datacube from RASTER sources.
 
+The RASTER sources can be stored locally or in an Object Store.
+
+| Storage      | Possible formats                                          |
+|--------------|-----------------------------------------------------------|
+| Local        | ./local/path/file<br>~/local/path/file<br>local/path/file |
+| Google Cloud | gs://my_bucket/my_blob                                    |
+
+For local storage, paths *have* to be relative.
+They can be present only in the local directory that is indicated in the `configs/input.storage.yml` configuration file.
+This local directory is automatically prefixed to any local path that are given.
+
 Supported product types are:
 
-| Product type                      | Source    | Format    |
-|-----------------------------------|-----------|-----------|
-| Sentinel2 Level 2A SAFE archive   | Sentinel2 | L2A-SAFE  |
-| Sentinel2 Level 2A Theia product  | Sentinel2 | L2A-Theia |
-| Sentinel1 Theia product           | Sentinel1 | Theia     |
-| Sentinel1 Level 1 SAFE archive    | Sentinel1 | L1-SAFE   |
-| Theia Snow coverage product       | Theia     | Snow      |
+| Product type                                | Source    | Format     |
+|---------------------------------------------|-----------|------------|
+| Sentinel1 Theia product                     | Sentinel1 | Theia      |
+| Sentinel1 Level 1 SAFE archive              | Sentinel1 | L1-SAFE    |
+| Sentinel2 Level 1C Domino-X PIVOT archive   | Sentinel2 | L1C-PIVOT  |
+| Sentinel2 Level 2A SAFE archive             | Sentinel2 | L2A-SAFE   |
+| Sentinel2 Level 2A Theia product            | Sentinel2 | L2A-Theia  |
+| Theia Snow coverage product                 | Theia     | Snow       |
 
 When running the service, a swagger of the API is available at the path `/docs` of the service on the dedicated port.
 
@@ -32,7 +44,7 @@ dc3-builder:
   debug: <True|False>
 ```
 
-The output datacubes and previews can be configured to be written either locally or in an object store through the `storage` parameter of the `configs/outputObjectStore.yml` file. Several options are available:
+The output datacubes and previews can be configured to be written either locally or in an object store through the `storage` parameter of the `configs/input.storage.yml` file. Several options are available:
 
 - "local" to write locally
 - "gs" to write in Google Cloud Storage

@@ -9,6 +9,7 @@ VALUE_DESCRIPTION = "The expression to create the desired band. Can be " + \
     "a band of the data prefaced by its alias (ie 'S2.B05', 'S2.B12') " + \
     "or an operation on the bands (ie 'S2.B5 + S2.B8')."
 DESCRIPTION_DESCRIPTION = "A description of the requested band."
+UNIT_DESCRIPTION = "The unit of the requested band."
 MIN_DESCRIPTION = "A minimum value to clip the band values."
 MAX_DESCRIPTION = "A maximum value to clip the band values."
 RGB_DESCRIPTION = "Which RGB channel the band is used for the preview. " + \
@@ -21,6 +22,7 @@ class Band(BaseModel):
     value: str = Field(description=VALUE_DESCRIPTION)
     description: str | None = Field(default=None,
                                     description=DESCRIPTION_DESCRIPTION)
+    unit: str | None = Field(default=None, description=UNIT_DESCRIPTION)
     min: float | None = Field(default=None, description=MIN_DESCRIPTION)
     max: float | None = Field(default=None, description=MAX_DESCRIPTION)
     rgb: RGB | None = Field(default=None, description=RGB_DESCRIPTION)

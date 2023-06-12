@@ -23,8 +23,8 @@ from datacube.core.models.enums import ChunkingStrategy as CStrat
 from datacube.core.models.exception import (DownloadError, MosaickingError,
                                             UploadError)
 from datacube.core.models.request.cubeBuild import ExtendedCubeBuildRequest
-from datacube.core.object_store.utils import (create_input_object_store,
-                                              get_mapper_output, write_bytes)
+from datacube.core.storage.utils import (create_input_storage,
+                                         get_mapper_output, write_bytes)
 from datacube.core.pivot.format import pivot_format_datacube
 from datacube.core.utils import (get_eval_formula, get_product_bands,
                                  get_raster_driver)
@@ -50,13 +50,13 @@ def __download(input: tuple[ExtendedCubeBuildRequest, int, int]) \
         raster_file = request.composition[group_idx].rasters[file_idx]
         timestamp = request.composition[group_idx].timestamp
 
-        input_object_store = create_input_object_store(
-                        urlparse(raster_file.path).scheme)
+        input_storage = create_input_storage(
+            urlparse(raster_file.path).scheme)
 
         LOGGER.info(f"[group-{group_idx}:file-{file_idx}] Extracting bands")
         # Depending on archive type, extract desired data
         raster_archive = get_raster_driver(raster_file.type)(
-            input_object_store, raster_file.path,
+            input_storage, raster_file.path,
             get_product_bands(request, raster_file.type),
             request.target_resolution,
             timestamp, TMP_DIR)
@@ -263,7 +263,7 @@ def build_datacube(request: ExtendedCubeBuildRequest):
                                                               metadata)
         shutil.rmtree(final_datacube)
 
-        LOGGER.info("Writing datacube in pivot format to Object Store")
+        LOGGER.info("Writing datacube in pivot format to storage")
         try:
             with open(pivot_path, 'rb') as ftar:
                 product_url = write_bytes(pivot_path.split("/")[-1],
@@ -276,7 +276,7 @@ def build_datacube(request: ExtendedCubeBuildRequest):
             raise UploadError(detail=f"Datacube: {e.args[0]}")
 
     else:
-        LOGGER.info("Writing datacube to Object Store")
+        LOGGER.info("Writing datacube to storage")
         try:
             product_url, mapper = get_mapper_output(request.datacube_path)
 
@@ -292,7 +292,7 @@ def build_datacube(request: ExtendedCubeBuildRequest):
 
         preview_file_name = f"{request.datacube_path}.png"
 
-    LOGGER.info("Uploading preview to Object Store")
+    LOGGER.info("Uploading preview to storage")
     try:
         preview_url = write_bytes(preview_file_name,
                                   base64.b64decode(preview))

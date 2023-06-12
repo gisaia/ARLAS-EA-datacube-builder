@@ -1,7 +1,7 @@
 import abc
 
 
-class AbstractObjectStore(abc.ABC):
+class AbstractStorage(abc.ABC):
     client: any
 
     def __init__(self):

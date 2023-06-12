@@ -1,10 +1,10 @@
 from google.cloud.storage import Client
 from google.oauth2 import service_account
 
-from datacube.core.object_store.drivers.abstract import AbstractObjectStore
+from datacube.core.storage.drivers.abstract import AbstractStorage
 
 
-class GCSObjectStore(AbstractObjectStore):
+class GCStorage(AbstractStorage):
 
     def __init__(self, api_key):
         credentials = service_account.Credentials.from_service_account_info(

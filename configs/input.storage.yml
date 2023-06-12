@@ -5,3 +5,6 @@ gs:
     private_key: "${GS_INPUT_PRIVATE_KEY}"
     client_email: "${GS_INPUT_CLIENT_EMAIL}"
     token_uri: "https://oauth2.googleapis.com/token"
+
+local:
+  root_directory: "tmp"

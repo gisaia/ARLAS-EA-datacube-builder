@@ -8,7 +8,7 @@ from dateutil import parser
 
 from datacube.core.models.exception import DownloadError
 from datacube.core.models.request.rasterProductType import RasterType
-from datacube.core.object_store.drivers.abstract import AbstractObjectStore
+from datacube.core.storage.drivers.abstract import AbstractStorage
 from datacube.core.rasters.drivers.abstract import AbstractRasterArchive
 
 
@@ -16,7 +16,7 @@ class Sentinel1_Theia(AbstractRasterArchive):
     PRODUCT_TYPE: ClassVar[RasterType] = RasterType(source="Sentinel1",
                                                     format="Theia")
 
-    def __init__(self, object_store: AbstractObjectStore, raster_uri: str,
+    def __init__(self, storage: AbstractStorage, raster_uri: str,
                  bands: dict[str, str], target_resolution: int,
                  raster_timestamp: int, zip_extract_path: str):
 
@@ -26,15 +26,15 @@ class Sentinel1_Theia(AbstractRasterArchive):
                                        f"of type {self.PRODUCT_TYPE.to_key()}")
         self.set_raster_metadata(raster_uri, raster_timestamp)
         self.target_resolution = target_resolution
-        self._extract_metadata(object_store, raster_uri,
+        self._extract_metadata(storage, raster_uri,
                                bands, zip_extract_path)
 
-    def _extract_metadata(self, object_store: AbstractObjectStore,
+    def _extract_metadata(self, storage: AbstractStorage,
                           raster_uri: str, bands: dict[str, str],
                           zip_extract_path: str):
         self.bands_to_extract = {}
 
-        params = {'client': object_store.client}
+        params = {'client': storage.client}
 
         with so.open(raster_uri, "rb", transport_params=params) as fileCloud:
             f_name = urlparse(raster_uri).path[1:]

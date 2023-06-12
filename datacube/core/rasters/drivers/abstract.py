@@ -14,7 +14,7 @@ from shapely.geometry import Polygon
 from datacube.core.geo.xarray import get_chunk_shape
 from datacube.core.models.enums import ChunkingStrategy as CStrat
 from datacube.core.models.request.rasterProductType import RasterType
-from datacube.core.object_store.drivers.abstract import AbstractObjectStore
+from datacube.core.storage.drivers.abstract import AbstractStorage
 from datacube.core.rasters.raster import Raster
 
 TMP = "tmp"
@@ -43,7 +43,7 @@ class AbstractRasterArchive(abc.ABC):
     src_crs: CRS = None
 
     @abc.abstractmethod
-    def __init__(self, object_store: AbstractObjectStore, raster_uri: str,
+    def __init__(self, storage: AbstractStorage, raster_uri: str,
                  bands: dict[str, str], target_resolution: int,
                  raster_timestamp: int, zip_extract_path: str):
         pass

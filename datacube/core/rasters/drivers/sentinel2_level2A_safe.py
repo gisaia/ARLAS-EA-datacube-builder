@@ -10,7 +10,7 @@ from lxml import etree
 
 from datacube.core.models.exception import DownloadError
 from datacube.core.models.request.rasterProductType import RasterType
-from datacube.core.object_store.drivers.abstract import AbstractObjectStore
+from datacube.core.storage.drivers.abstract import AbstractStorage
 from datacube.core.rasters.drivers.abstract import AbstractRasterArchive
 
 PRODUCT_START_TIME = "n1:General_Info/Product_Info/PRODUCT_START_TIME"
@@ -26,13 +26,13 @@ class Sentinel2_Level2A_Safe(AbstractRasterArchive):
     PRODUCT_TYPE: ClassVar[RasterType] = RasterType(source="Sentinel2",
                                                     format="L2A-SAFE")
 
-    def __init__(self, object_store: AbstractObjectStore, raster_uri: str,
+    def __init__(self, storage: AbstractStorage, raster_uri: str,
                  bands: dict[str, str], target_resolution: int,
                  raster_timestamp: int, zip_extract_path: str):
 
         self.set_raster_metadata(raster_uri, raster_timestamp)
         self._findBandsResolution(bands, target_resolution)
-        self._extract_metadata(object_store, raster_uri,
+        self._extract_metadata(storage, raster_uri,
                                bands, zip_extract_path)
 
     def _findBandsResolution(self, bands: dict[str, str],
@@ -103,12 +103,12 @@ class Sentinel2_Level2A_Safe(AbstractRasterArchive):
         else:
             self.bandsWithResolution[band] = LOW_RESOLUTION
 
-    def _extract_metadata(self, object_store: AbstractObjectStore,
+    def _extract_metadata(self, storage: AbstractStorage,
                           raster_uri: str, bands: dict[str, str],
                           zip_extract_path: str):
         self.bands_to_extract = {}
 
-        params = {'client': object_store.client}
+        params = {'client': storage.client}
 
         with so.open(raster_uri, "rb", transport_params=params) as fb:
             with zipfile.ZipFile(fb) as raster_zip:

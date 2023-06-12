@@ -28,6 +28,8 @@ Supported product types are:
 
 When running the service, a swagger of the API is available at the path `/docs` of the service on the dedicated port.
 
+The service caches raster metadata in a `cache` folder, that is cleared at the launch as well as as the metadatas are consumed.
+
 ## Prerequisites
 
 Docker or python3
@@ -78,7 +80,6 @@ dc3-builder:
 
 When using docker to launch the service, the app will be configured using the `docker.app.conf.yml` file.
 The app can be configured the same way as locally, but is pre-configured to work as is.
-For the app to work, Hazelcast's host needs to be replaced by the host machine address that will be used for the Hazelcast communication.
 
 The configuration looks like the following:
 
@@ -87,9 +88,6 @@ dc3-builder:
   host: 0.0.0.0
   port: <PORT>
   debug: <True|False>
-
-hazelcast:
-  host: <HAZELCAST'S HOST MACHINE ADDRESS>
 ```
 
 ### Input configuration

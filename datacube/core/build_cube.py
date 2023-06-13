@@ -236,16 +236,16 @@ def build_datacube(request: ExtendedCubeBuildRequest):
 
     # Add relevant datacube metadata
     metadata = create_datacube_metadata(request, datacube, lon_step, lat_step)
-    datacube.attrs.update(metadata.dict(exclude_unset=True))
+    datacube.attrs.update(metadata.dict(exclude_unset=True, by_alias=True))
 
     # Creating preview
     preview_path = f'{zarr_root_path}.png'
-    if len(datacube.attrs["preview"]) == 3:
+    if len(datacube.attrs["dc3:preview"]) == 3:
         preview = create_preview_b64(datacube, request.rgb,
                                      preview_path)
     else:
         preview = create_preview_b64_cmap(
-            datacube, datacube.attrs["preview"],
+            datacube, datacube.attrs["dc3:preview"],
             preview_path)
 
     if request.pivot_format:

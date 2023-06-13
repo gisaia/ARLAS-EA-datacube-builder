@@ -36,6 +36,7 @@ CHUNKING_DESCRIPTION = "Defines how we want the datacube to be chunked, " + \
                        "while 'spinach' chunks data on wide geographical " + \
                        "areas. 'Potato' is a balanced option, creating " + \
                        "an equally sized chunk."
+DESCRIPTION_DESCRIPTION = "The datacube's description"
 
 
 class CubeBuildRequest(BaseModel):
@@ -50,6 +51,7 @@ class CubeBuildRequest(BaseModel):
                                    description=PROJECTION_DESCRIPTION)
     chunking_strategy: CStrat = Field(default=CStrat.POTATO,
                                       description=CHUNKING_DESCRIPTION)
+    description: str | None = Field(description=DESCRIPTION_DESCRIPTION)
 
 
 class ExtendedCubeBuildRequest(CubeBuildRequest, arbitrary_types_allowed=True):

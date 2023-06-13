@@ -4,11 +4,9 @@ import base64
 import rioxarray
 import xarray as xr
 from matplotlib import cm
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 
 from datacube.core.models.enums import RGB
-
-FONT = "./configs/Roboto-Light.ttf"
 
 
 def __resize_band(dataset: xr.Dataset, band: str, x_factor: int,
@@ -94,24 +92,3 @@ def create_preview_b64_cmap(dataset: xr.Dataset, preview: dict[str, str],
         b64_image = base64.b64encode(fb.read()).decode('utf-8')
 
     return b64_image
-
-
-def add_text_on_white_band(imgPath: str, text: str):
-    img = Image.open(imgPath)
-    band_height = img.height // 10
-
-    font = ImageFont.truetype(FONT, int(band_height * 0.6))
-
-    # Add white band to the preview
-    img_band = Image.new("RGB", (img.width, img.height + band_height), "White")
-    img_band.paste(img)
-
-    # Create an editable object of the image
-    img_edit = ImageDraw.Draw(img_band)
-
-    # Add centered text in the white band
-    text_pos = ((img.width - font.getsize(text)[0]) / 2,
-                img.height + (band_height - font.getsize(text)[1]) / 2)
-    img_edit.text(text_pos, text, (0, 0, 0), font=font)
-
-    img_band.save(imgPath)

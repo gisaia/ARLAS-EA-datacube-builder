@@ -210,7 +210,8 @@ def create_datacube_metadata(request: ExtendedCubeBuildRequest,
         "dc3:number_of_chunks": number_of_chunks,
         "dc3:chunk_weight": chunk_weight,
         "dc3:quality_indicators": cube_indicators,
-        "dc3:fill_ratio": fill_ratio})
+        "dc3:fill_ratio": fill_ratio,
+        "dc3:description": request.description})
 
 
 def compute_time_compacity(rasters: list[CachedAbstractRasterArchive],

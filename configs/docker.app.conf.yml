@@ -1,5 +1,0 @@
-dc3-builder:
-  # Needed for communication outside of the docker
-  host: 0.0.0.0
-  port: 5000
-  debug: False

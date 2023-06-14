@@ -14,5 +14,3 @@ services:
       - $PWD/output/:/app/output/
     env_file:
       - credentials
-    environment:
-      - IS_DOCKER_LAUNCH=true

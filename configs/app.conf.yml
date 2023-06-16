@@ -3,3 +3,29 @@ dc3-builder:
   port: 8080
   debug: True
   pivot_format: False
+
+input:
+  local:
+    root_directory: "tmp"
+
+  gs:
+    bucket: "${GS_INPUT_BUCKET}"
+    api_key:
+      private_key_id: "${GS_INPUT_PRIVATE_KEY_ID}"
+      private_key: "${GS_INPUT_PRIVATE_KEY}"
+      client_email: "${GS_INPUT_CLIENT_EMAIL}"
+      token_uri: "https://oauth2.googleapis.com/token"
+
+output:
+  storage: "local"
+  
+  local:
+    directory: "output/"
+
+  gs:
+    bucket: "${GS_OUTPUT_BUCKET}"
+    api_key:
+      private_key_id: "${GS_OUTPUT_PRIVATE_KEY_ID}"
+      private_key: "${GS_OUTPUT_PRIVATE_KEY}"
+      client_email: "${GS_OUTPUT_CLIENT_EMAIL}"
+      token_uri: "https://oauth2.googleapis.com/token"

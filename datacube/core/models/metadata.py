@@ -61,3 +61,4 @@ class DatacubeMetadata(BaseModel):
     quality_indicators: QualityIndicatorsCube \
         = Field(alias="dc3:quality_indicators")
     fill_ratio: float = Field(alias="dc3:fill_ratio")
+    description: str | None = Field(alias="dc3:description")

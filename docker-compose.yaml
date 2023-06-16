@@ -14,16 +14,3 @@ services:
       - $PWD/output/:/app/output/
     env_file:
       - credentials
-    environment:
-      - IS_DOCKER_LAUNCH=true
-    depends_on:
-      - hazelcast
-
-  hazelcast:
-    image: hazelcast/hazelcast:5.2
-    container_name: hazelcast
-    ports:
-      - 5701:5701
-    environment:
-      # '172.23.0.2' needs to be replaced by the host machine address that will be used for the Hazelcast communication 
-      - HZ_NETWORK_PUBLICADDRESS=172.23.0.2:5701

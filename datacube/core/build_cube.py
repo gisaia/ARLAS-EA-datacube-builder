@@ -33,6 +33,7 @@ from datacube.core.visualisation.preview import (create_preview_b64,
 
 TMP_DIR = "tmp/"
 LOGGER = Logger.get_logger()
+CACHE = {}
 
 
 def __download(input: tuple[ExtendedCubeBuildRequest, int, int]) \
@@ -68,7 +69,7 @@ def __download(input: tuple[ExtendedCubeBuildRequest, int, int]) \
         zarr_path = raster_archive.build_zarr(zarr_root_path,
                                               request.target_projection,
                                               polygon=request.roi_polygon)
-        CacheManager().put_raster(raster_archive)
+        CacheManager.put_raster(raster_archive)
 
         grouped_datasets: dict[int, list[str]] = {timestamp: [zarr_path]}
         return grouped_datasets
@@ -150,7 +151,7 @@ def build_datacube(request: ExtendedCubeBuildRequest):
     download_iter = []
     for group_idx in range(len(request.composition)):
         for idx in range(len(request.composition[group_idx].rasters)):
-            download_iter.append((request, group_idx, idx, LOGGER))
+            download_iter.append((request, group_idx, idx))
 
     # Download parallely the groups of bands of each file
     try:
@@ -221,7 +222,6 @@ def build_datacube(request: ExtendedCubeBuildRequest):
                              .values.tolist())
             lat_step = float(datacube.get("y").diff("y").mean()
                              .values.tolist())
-    # TODO: merge manually dataset attributes
 
     # Compute the bands requested from the product bands
     for band in request.bands:
@@ -236,16 +236,16 @@ def build_datacube(request: ExtendedCubeBuildRequest):
 
     # Add relevant datacube metadata
     metadata = create_datacube_metadata(request, datacube, lon_step, lat_step)
-    datacube.attrs.update(metadata.dict(exclude_unset=True))
+    datacube.attrs.update(metadata.dict(exclude_unset=True, by_alias=True))
 
     # Creating preview
     preview_path = f'{zarr_root_path}.png'
-    if len(datacube.attrs["preview"]) == 3:
+    if len(datacube.attrs["dc3:preview"]) == 3:
         preview = create_preview_b64(datacube, request.rgb,
                                      preview_path)
     else:
         preview = create_preview_b64_cmap(
-            datacube, datacube.attrs["preview"],
+            datacube, datacube.attrs["dc3:preview"],
             preview_path)
 
     if request.pivot_format:

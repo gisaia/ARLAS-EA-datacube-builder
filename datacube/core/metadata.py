@@ -44,7 +44,7 @@ def create_datacube_metadata(request: ExtendedCubeBuildRequest,
         t_step = str(datacube.get("t").diff("t").sum().values
                      / (len(datacube.get("t")) - 1))
     dimensions["t"] = TemporalDimension(
-        type=DimensionType.TEMPORAL.value, axis="t", description="",
+        type=DimensionType.TEMPORAL, axis="t", description="",
         extent=[datetime.fromtimestamp(
                     datacube.get("t").values[0]).isoformat(),
                 datetime.fromtimestamp(
@@ -83,8 +83,6 @@ def create_datacube_metadata(request: ExtendedCubeBuildRequest,
     chunk_weight = datacube.chunks['x'][0] * datacube.chunks['y'][0] \
         * datacube.chunks['t'][0] * data_weight
 
-    cache_client = CacheManager()
-
     composition_start = math.inf
     composition_end = -math.inf
 
@@ -93,7 +91,7 @@ def create_datacube_metadata(request: ExtendedCubeBuildRequest,
     for group in request.composition:
         group_composition: dict[str, list[CachedAbstractRasterArchive]] = {}
         for r in group.rasters:
-            raster = cache_client.get(r.path)
+            raster = CacheManager.get(r.path)
             if raster:
                 # Split the rasters by timestamp and product type
                 if raster.type.to_key() in group_composition:
@@ -212,7 +210,8 @@ def create_datacube_metadata(request: ExtendedCubeBuildRequest,
         "dc3:number_of_chunks": number_of_chunks,
         "dc3:chunk_weight": chunk_weight,
         "dc3:quality_indicators": cube_indicators,
-        "dc3:fill_ratio": fill_ratio})
+        "dc3:fill_ratio": fill_ratio,
+        "dc3:description": request.description})
 
 
 def compute_time_compacity(rasters: list[CachedAbstractRasterArchive],

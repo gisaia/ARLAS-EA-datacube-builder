@@ -12,7 +12,7 @@ The RASTER sources can be stored locally or in an Object Store.
 | Google Cloud | gs://my_bucket/my_blob                                    |
 
 For local storage, paths *have* to be relative.
-They can be present only in the local directory that is indicated in the `configs/input.storage.yml` configuration file.
+They can be present only in the `input local root_directory` that is indicated in the `configs/app.conf.yml` configuration file.
 This local directory is automatically prefixed to any local path that are given.
 
 Supported product types are:
@@ -28,40 +28,15 @@ Supported product types are:
 
 When running the service, a swagger of the API is available at the path `/docs` of the service on the dedicated port.
 
+The service caches raster metadata in a `cache` folder, that is cleared at the launch as well as as the metadatas are consumed.
+
 ## Prerequisites
 
 Docker or python3
 
 ## Running ARLAS-datacube-builder with python
 
-To start the service with python, execute the `app.py` file.
-Parameters can be set with the file `configs/app.conf.yml`, that has the following structure:
-
-```yaml
-dc3-builder:
-  host: <HOST>
-  port: <PORT>
-  debug: <True|False>
-```
-
-The output datacubes and previews can be configured to be written either locally or in an object store through the `storage` parameter of the `configs/input.storage.yml` file. Several options are available:
-
-- "local" to write locally
-- "gs" to write in Google Cloud Storage
-
-In order to be able to access Object Stores, an `credentials` file must be created to set the global variables used.
-
-```yaml
-GS_INPUT_BUCKET=
-GS_INPUT_PRIVATE_KEY_ID=
-GS_INPUT_PRIVATE_KEY=
-GS_INPUT_CLIENT_EMAIL=
-
-GS_OUTPUT_BUCKET=
-GS_OUTPUT_PRIVATE_KEY_ID=
-GS_OUTPUT_PRIVATE_KEY=
-GS_OUTPUT_CLIENT_EMAIL=
-```
+To start the service with python and default configuration, execute the `app.py` file.
 
 The script `scripts/start-app.sh` is available as an example of how to launch the service.
 
@@ -76,22 +51,6 @@ docker build -t gisaia/arlas-datacube-builder:latest .
 
 ### Starting the REST Service
 
-When using docker to launch the service, the app will be configured using the `docker.app.conf.yml` file.
-The app can be configured the same way as locally, but is pre-configured to work as is.
-For the app to work, Hazelcast's host needs to be replaced by the host machine address that will be used for the Hazelcast communication.
-
-The configuration looks like the following:
-
-```yaml
-dc3-builder:
-  host: 0.0.0.0
-  port: <PORT>
-  debug: <True|False>
-
-hazelcast:
-  host: <HAZELCAST'S HOST MACHINE ADDRESS>
-```
-
 To launch the service, simply execute the following command:
 
 ```shell
@@ -104,9 +63,101 @@ It is possible to start the REST service with data already available, by using t
 
 The files need to be stored as they would be when extracted from their archive.
 
-## Creating datacubes in the PIVOT format
+## How to configure ARLAS-datacube-builder
 
-The service is able to transform the desired datacubes in the PIVOT format by setting the following parameter in the `configs/app.conf.yml` or `configs/docker.app.conf.yml` file depending on the usage.
+A default configuration is present in the `configs` folder.
+
+### App configuration
+
+Parameters can be set with the file `configs/app.conf.yml`, that has the following structure:
+
+```yaml
+dc3-builder:
+  host: <HOST>
+  port: <PORT>
+  debug: <True|False>
+
+input:
+  ...
+
+output:
+  ...
+```
+
+### Input configuration
+
+The file `configs/app.conf.yml` contains the configuration for the different input object stores. It can be used to configure different types of object stores, whether locally or in the cloud, using the following structure:
+
+```yaml
+dc3-builder:
+  ...
+
+input:
+  local:
+    root_directory: <LOCAL_ROOT_DIRECTORY>
+
+  gs:
+    bucket: <GS_INPUT_BUCKET>
+    api_key:
+      private_key_id: <GS_INPUT_PRIVATE_KEY_ID>
+      private_key: <GS_INPUT_PRIVATE_KEY>
+      client_email: <GS_INPUT_CLIENT_EMAIL>
+      token_uri: "https://oauth2.googleapis.com/token"
+
+output:
+  ...
+```
+
+### Output configuration
+
+The output datacubes and previews can be configured to be written either locally or in an object store through the `output storage` parameter of the `configs/app.conf.yml` file. Several options are available:
+
+- "local" to write locally
+- "gs" to write in Google Cloud Storage
+
+The configuration file has the following structure:
+
+```yaml
+dc3-builder:
+  ...
+
+input:
+  ...
+
+output:
+  storage: <local|gs>
+
+  local:
+    directory: <LOCAL_OUTPUT_DIRECTORY>
+
+  gs:
+    bucket: <GS_BUCKET>
+    api_key:
+      private_key_id: <GS_OUTPUT_PRIVATE_KEY_ID>
+      private_key: <GS_OUTPUT_PRIVATE_KEY>
+      client_email: <GS_OUTPUT_CLIENT_EMAIL>
+      token_uri: "https://oauth2.googleapis.com/token"
+```
+
+### Credentials
+
+In order to be able to access Object Stores, a `credentials` file could be created to set the global variables used in the given configuration file.
+
+```
+GS_INPUT_BUCKET=
+GS_INPUT_PRIVATE_KEY_ID=
+GS_INPUT_PRIVATE_KEY=
+GS_INPUT_CLIENT_EMAIL=
+
+GS_OUTPUT_BUCKET=
+GS_OUTPUT_PRIVATE_KEY_ID=
+GS_OUTPUT_PRIVATE_KEY=
+GS_OUTPUT_CLIENT_EMAIL=
+```
+
+### Creating datacubes in the Domino-X Pivot format
+
+The service is able to transform the desired datacubes in the Domino-X Pivot format by setting the following parameter in the `configs/app.conf.yml` file.
 
 It will write either locally or in an object store both the PIVOT archive and the preview.
 

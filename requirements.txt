@@ -21,6 +21,5 @@ matplotlib==3.5.2
 fastapi==0.95.0
 uvicorn==0.21.1
 jsonref==1.1.0
-hazelcast-python-client==5.2.0
 attrs==22.2.0
 pyproj==3.4.1

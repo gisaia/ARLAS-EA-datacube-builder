@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 import yaml
@@ -13,7 +12,6 @@ LOGGER = Logger.get_logger()
 
 class ServerConfiguration:
     conf_file = str(ROOT_PATH.joinpath("configs/app.conf.yml"))
-    docker_conf_file = str(ROOT_PATH.joinpath("configs/docker.app.conf.yml"))
 
     @classmethod
     def set_conf_file(cls, conf_file: str):
@@ -25,11 +23,7 @@ class ServerConfiguration:
 
     @classmethod
     def get_server_conf(cls) -> ServerConfigurationModel:
-        conf_file = cls.conf_file
-        if "IS_DOCKER_LAUNCH" in os.environ and os.environ["IS_DOCKER_LAUNCH"]:
-            conf_file = cls.docker_conf_file
-
-        with open(conf_file, 'r') as f:
+        with open(cls.conf_file, 'r') as f:
             try:
                 return ServerConfigurationModel(**yaml.safe_load(f))
             except yaml.YAMLError as e:

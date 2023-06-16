@@ -148,7 +148,7 @@ if __name__ == "__main__":
     datacube = xr.open_zarr(args.datacube_path)
     datacube_name = args.name if args.name \
         else args.datacube_path.split("/")[-1]
-    datacube_description = datacube.attrs["dc3:description"]
+    datacube_description = datacube.attrs["description"]
 
     if args.big:
         size = [len(datacube.x), len(datacube.y)]

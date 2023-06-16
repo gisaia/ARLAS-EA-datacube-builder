@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 
 import smart_open as so
 from dateutil import parser
+from datacube.core.models.enums import SensorFamily
 
 from datacube.core.models.exception import DownloadError
 from datacube.core.models.request.rasterProductType import RasterType
@@ -15,6 +16,7 @@ from datacube.core.rasters.drivers.abstract import AbstractRasterArchive
 class Sentinel1_Theia(AbstractRasterArchive):
     PRODUCT_TYPE: ClassVar[RasterType] = RasterType(source="Sentinel1",
                                                     format="Theia")
+    SENSOR_TYPE: SensorFamily = SensorFamily.RADAR
 
     def __init__(self, storage: AbstractStorage, raster_uri: str,
                  bands: dict[str, str], target_resolution: int,

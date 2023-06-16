@@ -29,7 +29,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
     "bands": [
         {
             "name": "B02",
-            "value": "Pivot.B02"
+            "expression": "Pivot.B02"
         }
     ],
     "target_resolution": 10,

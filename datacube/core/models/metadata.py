@@ -3,8 +3,6 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field
 
-from datacube.core.models.request.rasterGroup import RasterGroup
-
 
 class DimensionType(str, enum.Enum):
     SPATIAL = "spatial"
@@ -42,23 +40,25 @@ class Variable(BaseModel):
 
 
 class QualityIndicators(BaseModel):
-    time_compacity: float = Field()
-    spatial_coverage: float = Field()
-    group_lightness: float = Field()
+    time_compacity: float = Field(alias="dc3:time_compacity")
+    spatial_coverage: float = Field(alias="dc3:spatial_coverage")
+    group_lightness: float = Field(alias="dc3:group_lightness")
 
 
 class QualityIndicatorsCube(QualityIndicators):
-    time_regularity: float = Field()
+    time_regularity: float = Field(alias="dc3:time_regularity")
 
 
-class DatacubeMetadata(BaseModel):
+class GroupMetadata(QualityIndicators):
+    rasters: list[str]
+    timestamp: int
+
+
+class DatacubeMetadata(QualityIndicatorsCube):
     dimensions: dict[str, Dimension] = Field(alias="cube:dimensions")
     variables: dict[str, Variable] = Field(alias="cube:variables")
-    composition: list[RasterGroup] = Field(alias="dc3:composition")
+    composition: list[GroupMetadata] = Field(alias="dc3:composition")
     preview: dict[str, str] = Field(alias="dc3:preview")
     number_of_chunks: int = Field(alias="dc3:number_of_chunks")
     chunk_weight: int = Field(alias="dc3:chunk_weight")
-    quality_indicators: QualityIndicatorsCube \
-        = Field(alias="dc3:quality_indicators")
     fill_ratio: float = Field(alias="dc3:fill_ratio")
-    description: str | None = Field(alias="dc3:description")

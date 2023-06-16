@@ -5,9 +5,9 @@ from datacube.core.models.enums import RGB
 from datacube.core.models.exception import BadRequest
 
 NAME_DESCRIPTION = "The name of the band requested."
-VALUE_DESCRIPTION = "The expression to create the desired band. Can be " + \
-    "a band of the data prefaced by its alias (ie 'S2.B05', 'S2.B12') " + \
-    "or an operation on the bands (ie 'S2.B5 + S2.B8')."
+EXPRESSION_DESCRIPTION = "The expression to create the desired band. " + \
+    "Can be a band of the data prefaced by its alias (ie 'S2.B05', " + \
+    "'S2.B12') or an operation on the bands (ie 'S2.B5 + S2.B8')."
 DESCRIPTION_DESCRIPTION = "A description of the requested band."
 UNIT_DESCRIPTION = "The unit of the requested band."
 MIN_DESCRIPTION = "A minimum value to clip the band values."
@@ -19,7 +19,7 @@ CMAP_DESCRIPTION = "The matplotlib color map to use for the preview."
 
 class Band(BaseModel):
     name: str = Field(description=NAME_DESCRIPTION)
-    value: str = Field(description=VALUE_DESCRIPTION)
+    expression: str = Field(description=EXPRESSION_DESCRIPTION)
     description: str | None = Field(default=None,
                                     description=DESCRIPTION_DESCRIPTION)
     unit: str | None = Field(default=None, description=UNIT_DESCRIPTION)

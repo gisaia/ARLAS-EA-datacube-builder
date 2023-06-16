@@ -1,5 +1,5 @@
 import re
-from typing import Match
+from typing import Match, Type
 
 from datacube.core.models.exception import BadRequest
 from datacube.core.models.request.cubeBuild import ExtendedCubeBuildRequest
@@ -32,22 +32,23 @@ def get_product_bands(request: ExtendedCubeBuildRequest,
     for band in request.bands:
         # Extract the bands required from the expression
         match = re.findall(rf'{alias_product}\.([a-zA-Z0-9]*)',
-                           band.value)
+                           band.expression)
         for m in match:
             product_bands[f'{alias_product}.{m}'] = m
 
     return product_bands
 
 
-def get_eval_formula(band_value: str, aliases: list[AliasedRasterType]) -> str:
+def get_eval_formula(band_expression: str,
+                     aliases: list[AliasedRasterType]) -> str:
     """
-    Transform the requested value of the band in a xarray operation
+    Transform the requested expression of the band in a xarray operation
     """
     def repl(match: Match[str]) -> str:
         for m in match.groups():
             return f"datacube.get('{m}')"
 
-    result = band_value
+    result = band_expression
     for alias in map(lambda a: a.alias, aliases):
         result = re.sub(rf"({alias}\.[a-zA-Z0-9]*)", repl, result)
 
@@ -55,7 +56,7 @@ def get_eval_formula(band_value: str, aliases: list[AliasedRasterType]) -> str:
 
 
 def get_raster_driver(raster_product_type: RasterType) \
-        -> type[AbstractRasterArchive]:
+        -> Type[AbstractRasterArchive]:
     if raster_product_type == Sentinel2_Level2A_Safe.PRODUCT_TYPE:
         return Sentinel2_Level2A_Safe
     elif raster_product_type == Sentinel2_Level2A_Theia.PRODUCT_TYPE:

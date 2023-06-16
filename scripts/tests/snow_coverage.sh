@@ -92,7 +92,7 @@ curl -X POST -H "Content-Type: application/json" -d '{
     "bands": [
         {
             "name": "SCD",
-            "value": "Snow.SCD / 365",
+            "expression": "Snow.SCD / 365",
             "description": "Snow Coverage Duration",
             "unit": "% of the year"
         }
@@ -104,5 +104,6 @@ curl -X POST -H "Content-Type: application/json" -d '{
             "source": "Theia",
             "format": "Snow"
         }
-    ]
+    ],
+    "description": "Represents the annual snow coverage of the Pyrennees"
 }' http://localhost:8080/cube/build

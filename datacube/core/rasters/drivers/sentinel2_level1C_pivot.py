@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import ClassVar
 
 import smart_open as so
+from datacube.core.logging.logger import CustomLogger
 from datacube.core.models.enums import SensorFamily
 
 from datacube.core.models.exception import DownloadError
@@ -64,12 +65,14 @@ class Sentinel2_Level1C_Pivot(AbstractRasterArchive):
                 file_names = raster_tar.getnames()
                 # Extract timestamp of production of the product
                 for f_name in file_names:
-                    if re.match(r".*/CAT_S2A_MSI__L1C_.*.JSON", f_name):
+                    if re.match(r".*/CAT_S2._MSI__L1C_.*.JSON", f_name):
+                        CustomLogger().get_logger().info(f_name)
                         if not path.exists(zip_extract_path + f_name):
                             raster_tar.extract(f_name, zip_extract_path)
                         with open(zip_extract_path + f_name, 'r') as f:
                             product_datetime: str = json.load(
                                 f)["properties"]["datetime"]
+                            CustomLogger().get_logger().warn(product_datetime)
                             self.product_time = datetime.timestamp(
                                 datetime.fromisoformat(
                                     product_datetime.replace('Z', '+00:00')))
@@ -82,7 +85,7 @@ class Sentinel2_Level1C_Pivot(AbstractRasterArchive):
                 for datacube_band, product_band in bands.items():
                     for f_name in file_names:
                         if re.match(rf".*/IMG_MSI_{product_band}_10m" +
-                                    r"_S2A_MSI__L1C_.*\.JP2", f_name):
+                                    r"_S2._MSI__L1C_.*\.JP2", f_name):
                             if not path.exists(zip_extract_path + f_name):
                                 raster_tar.extract(f_name, zip_extract_path)
 

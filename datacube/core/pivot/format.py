@@ -17,9 +17,9 @@ from pyproj import CRS
 from datacube.core.geo.utils import bbox2polygon
 from datacube.core.models.metadata import DatacubeMetadata
 from datacube.core.models.request.cubeBuild import ExtendedCubeBuildRequest
-from datacube.core.pivot.models.catalogue import (Band, CatalogueDescription,
-                                                  Polygon, Properties,
-                                                  SensorFamily)
+from datacube.core.pivot.models.catalog import (Band, CatalogDescription,
+                                                Polygon, Properties,
+                                                SensorFamily)
 from datacube.core.utils import get_raster_driver
 
 
@@ -81,7 +81,7 @@ def pivot_format_datacube(request: ExtendedCubeBuildRequest,
             elif sensor != datacube_sensor:
                 datacube_sensor = SensorFamily.MULTI
 
-    # Create catalogue CAT_<ID>.json file
+    # Create catalog CAT_<ID>.json file
     x, y = bbox2polygon(xmin, ymin, xmax, ymax).exterior.coords.xy
     geometry = Polygon(coordinates=[[x[i], y[i]] for i in range(len(x))])
     properties = Properties(
@@ -99,7 +99,7 @@ def pivot_format_datacube(request: ExtendedCubeBuildRequest,
     title = (request.datacube_path[:-1] if request.datacube_path[-1] == "/"
              else request.datacube_path).split("/")[-1]
 
-    catalog = CatalogueDescription(
+    catalog = CatalogDescription(
         title=title, description=request.description, id=id,
         bbox=[xmin, ymin, xmax, ymax], geometry=geometry,
         assets={"datacube": [b for b in datacube.data_vars.keys()]},
@@ -113,6 +113,8 @@ def pivot_format_datacube(request: ExtendedCubeBuildRequest,
         for k, v in catalog_dict['properties'].items():
             if (not re.match('^dc3', k)) and (not re.match('^cube', k)):
                 properties[k] = v
+            elif k == 'processing:level':
+                properties['processing:product_type'] = v
             else:
                 # Replace dc3 with dox_dc3
                 dc_properties[re.sub('^dc3', 'dox_dc3', k)] = v

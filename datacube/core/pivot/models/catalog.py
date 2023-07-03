@@ -42,6 +42,12 @@ class Polygon(BaseModel):
     coordinates: list[Coordinates] = Field(min_items=4)
 
 
+class ConfidentialityLevel(str, enum.Enum):
+    NOT_PROTECTED = "NOT_PROTECTED"
+    RESTRICTED = "RESTRICTED"
+    CONFIDENTIAL = "CONFIDENTIAL"
+
+
 class Properties(DatacubeMetadata):
     datetime: str = Field(description="Date time of the product (ISO 8601)")
     start_datetime: str = Field()
@@ -54,6 +60,12 @@ class Properties(DatacubeMetadata):
     imageFileFormat: str = Field(default="ZARR", alias="dox:imageFileFormat")
     thematics: list[str] | None = Field(alias="dox:thematics")
     sensorFamily: SensorFamily = Field(alias="dox:sensorFamily")
+    metadataFormat: str = Field(default="STAC", alias="dox:metadataFormat")
+    productConfidentialityLevel: ConfidentialityLevel = Field(
+        default=ConfidentialityLevel.NOT_PROTECTED,
+        alias="dox:productConfidentialityLevel")
+    productFileFormat: str = Field(default="PIVOT",
+                                   alias="dox:productFileFormat")
 
     # Add when coarsing is present
     # gsd: float | int = Field()
@@ -64,7 +76,7 @@ class Properties(DatacubeMetadata):
     bands: list[Band] = Field(alias="raster:bands")
 
 
-class CatalogueDescription(BaseModel):
+class CatalogDescription(BaseModel):
     title: str = Field()
     description: str | None = Field()
     type: str = Field(default="Feature")

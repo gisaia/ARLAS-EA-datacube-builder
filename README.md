@@ -88,6 +88,8 @@ output:
   ...
 ```
 
+To launch it with the docker image, the host has to be `0.0.0.0`.
+
 ### Input configuration
 
 The file `configs/app.conf.yml` contains the configuration for the different input object stores. It can be used to configure different types of object stores, whether locally or in the cloud, using the following structure:

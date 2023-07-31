@@ -46,10 +46,10 @@ def create_datacube_metadata(request: ExtendedCubeBuildRequest,
                      / (len(datacube.get("t")) - 1))
     dimensions["t"] = TemporalDimension(
         type=DimensionType.TEMPORAL, axis="t", description="",
-        extent=[datetime.fromtimestamp(
-                    datacube.get("t").values[0]).isoformat(),
-                datetime.fromtimestamp(
-                    datacube.get("t").values[-1]).isoformat()],
+        extent=[datetime.utcfromtimestamp(
+                    datacube.get("t").values[0]).isoformat() + 'Z',
+                datetime.utcfromtimestamp(
+                    datacube.get("t").values[-1]).isoformat() + 'Z'],
         step=t_step
     )
 

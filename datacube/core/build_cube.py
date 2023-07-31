@@ -240,7 +240,7 @@ def build_datacube(request: ExtendedCubeBuildRequest):
     datacube.attrs.update({"description": request.description})
 
     # Creating preview
-    preview_path = f'{zarr_root_path}.png'
+    preview_path = f'{zarr_root_path}.jpg'
     if len(datacube.attrs["dc3:preview"]) == 3:
         preview = create_preview_b64(datacube, request.rgb,
                                      preview_path)
@@ -291,7 +291,7 @@ def build_datacube(request: ExtendedCubeBuildRequest):
             traceback.print_exc()
             raise UploadError(detail=f"Datacube: {e.args[0]}")
 
-        preview_file_name = f"{request.datacube_path}.png"
+        preview_file_name = f"{request.datacube_path}.jpg"
 
     LOGGER.info("Uploading preview to storage")
     try:

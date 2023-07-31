@@ -85,7 +85,10 @@ def create_preview_b64_cmap(dataset: xr.Dataset, preview: dict[str, str],
                 int((ylen-size[0])/2):int((ylen+size[0])/2)]
 
     img = Image.fromarray(cm.get_cmap(cmap)(data, bytes=True))
-    img.save(preview_path)
+    try:
+        img.save(preview_path)
+    except OSError:
+        img.convert('RGB').save(preview_path)
 
     # encode in base64
     with open(preview_path, 'rb') as fb:

@@ -61,9 +61,8 @@ def pivot_format_datacube(request: ExtendedCubeBuildRequest,
         band_to_STAC_raster_band(b) for b in datacube.data_vars.values()]
     datacube.close()
 
-    # In a folder PRODUCT_<ID>
-    pivot_root_folder = path.join(str(Path(datacube_path).parent),
-                                  f"PRODUCT_{id}")
+    # In a folder <ID>
+    pivot_root_folder = path.join(str(Path(datacube_path).parent), id)
     os.mkdir(pivot_root_folder)
 
     # Find sensor family
@@ -83,11 +82,11 @@ def pivot_format_datacube(request: ExtendedCubeBuildRequest,
 
     # Create catalog CAT_<ID>.json file
     x, y = bbox2polygon(xmin, ymin, xmax, ymax).exterior.coords.xy
-    geometry = Polygon(coordinates=[[x[i], y[i]] for i in range(len(x))])
+    geometry = Polygon(coordinates=[[[x[i], y[i]] for i in range(len(x))]])
     properties = Properties(
-        datetime=datetime.now().isoformat(timespec='seconds'),
-        start_datetime=datetime.fromtimestamp(tmin).isoformat(),
-        end_datetime=datetime.fromtimestamp(tmax).isoformat(),
+        datetime=datetime.utcnow().isoformat(timespec='seconds') + 'Z',
+        start_datetime=datetime.utcfromtimestamp(tmin).isoformat() + 'Z',
+        end_datetime=datetime.utcfromtimestamp(tmax).isoformat() + 'Z',
         **metadata.dict(by_alias=True), **{
             "proj:epsg": CRS.from_string(request.target_projection).to_epsg(),
             "raster:bands": raster_bands,
@@ -105,16 +104,19 @@ def pivot_format_datacube(request: ExtendedCubeBuildRequest,
         assets={"datacube": [b for b in datacube.data_vars.keys()]},
         properties=properties)
 
-    with open(path.join(pivot_root_folder, f"CAT_{id}.json"), 'w') as f:
+    with open(path.join(pivot_root_folder, f"CAT_{id}.JSON"), 'w') as f:
         catalog_dict = catalog.dict(by_alias=True, exclude_none=True)
 
         properties = {}
         dc_properties = {}
         for k, v in catalog_dict['properties'].items():
             if (not re.match('^dc3', k)) and (not re.match('^cube', k)):
-                properties[k] = v
-            elif k == 'processing:level':
-                properties['processing:product_type'] = v
+                if k == 'processing:level':
+                    properties['processing:product_type'] = v
+                elif k == 'proj:epsg':
+                    properties[k] = str(v)
+                else:
+                    properties[k] = v
             else:
                 # Replace dc3 with dox_dc3
                 dc_properties[re.sub('^dc3', 'dox_dc3', k)] = v
@@ -123,7 +125,7 @@ def pivot_format_datacube(request: ExtendedCubeBuildRequest,
         f.write(json.dumps(catalog_dict, indent=2))
 
     # Rename preview to PREVIEW
-    pivot_preview_name = f"PREVIEW_{id}.PNG"
+    pivot_preview_name = f"PREVIEW_{id}.JPG"
     shutil.copy(preview_path, path.join(pivot_root_folder, pivot_preview_name))
 
     # Put zarr in folder under the format IMG_DC3_<BANDS>_<ID>.zarr

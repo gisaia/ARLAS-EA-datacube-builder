@@ -6,8 +6,8 @@ SOURCE_DESCRIPTION = "Designates where the product comes from. " + \
 FORMAT_DESCRIPTION = "Designates the transformation applied to the " + \
                      "raw product and the format of the final raster. " + \
                      "For example, 'L2A-SAFE'."
-ALIAS_DESCRIPTION = "The alias of the raster product type. " + \
-                    "Has to be defined in the aliases object of the request."
+ALIAS_DESCRIPTION = "Name that aliases the desired product type, to " + \
+                    "facilitate further references."
 
 
 class RasterType(BaseModel):

@@ -37,9 +37,14 @@ class Coordinates(BaseModel):
     __root__: list[float] = Field(min_items=2, max_items=2)
 
 
+class Ring(BaseModel):
+    __root__: list[Coordinates] = Field(min_items=4)
+
+
 class Polygon(BaseModel):
     type: str = "Polygon"
-    coordinates: list[Coordinates] = Field(min_items=4)
+    # A Polygon can be composed of an outer ring and an inner ring
+    coordinates: list[Ring] = Field()
 
 
 class ConfidentialityLevel(str, enum.Enum):

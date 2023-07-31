@@ -27,12 +27,14 @@ ALIASES_DESCRIPTION = "The list of aliases for this datacube. " + \
                       "product bands used to compute the datacube bands."
 ROI_DESCRIPTION = "The Region Of Interest to extract. " + \
                   "Accepted formats are BBOX or WKT POLYGON."
-RESOLUTION_DESCRIPTION = "The requested spatial resolution in meters."
+RESOLUTION_DESCRIPTION = "The requested spatial resolution in meters. " + \
+                         "By default uses the best resolution of the " + \
+                         "given products."
 PROJECTION_DESCRIPTION = "The targeted projection. Default: 'EPSG:4326'."
 CHUNKING_DESCRIPTION = "Defines how we want the datacube to be chunked, " + \
                        "to facilitate further data processing. Three " + \
                        "strategies are available: 'carrot', 'potato' and " + \
-                       "'spinach'. 'Carrot' creates deep temporal slices, " + \
+                       "'spinach'. 'carrot' creates deep temporal slices, " + \
                        "while 'spinach' chunks data on wide geographical " + \
                        "areas. 'Potato' is a balanced option, creating " + \
                        "an equally sized chunk."

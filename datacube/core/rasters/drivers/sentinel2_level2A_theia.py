@@ -7,6 +7,7 @@ from typing import ClassVar
 import smart_open as so
 from dateutil import parser
 from lxml import etree
+from datacube.core.models.enums import SensorFamily
 
 from datacube.core.models.exception import DownloadError
 from datacube.core.models.request.rasterProductType import RasterType
@@ -23,6 +24,7 @@ MED_RESOLUTION = 20
 class Sentinel2_Level2A_Theia(AbstractRasterArchive):
     PRODUCT_TYPE: ClassVar[RasterType] = RasterType(source="Sentinel2",
                                                     format="L2A-Theia")
+    SENSOR_TYPE: SensorFamily = SensorFamily.RADAR
 
     def __init__(self, storage: AbstractStorage, raster_uri: str,
                  bands: dict[str, str], target_resolution: int,

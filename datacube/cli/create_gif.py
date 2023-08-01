@@ -48,7 +48,7 @@ def add_text_on_image(imgPath: str, name: str,
                       description: str, bottom_text: str):
     img = Image.open(imgPath)
     band_height = img.height // 10
-    description_band_height = img.height // 20
+    description_band_height = (1 if description else 0) * img.height // 20
 
     font = ImageFont.truetype(FONT, int(band_height * 0.6))
     # TODO: change font based on description length and/or split text
@@ -66,11 +66,15 @@ def add_text_on_image(imgPath: str, name: str,
     # Add centered text in the top white band
     name_pos = ((img.width - font.getsize(name)[0]) / 2,
                 (band_height - font.getsize(name)[1]) / 2)
-    description_pos = ((img.width - small_font.getsize(description)[0]) / 2,
-                       band_height + (description_band_height -
-                                      small_font.getsize(description)[1]) / 2)
     img_edit.text(name_pos, name, TEXT_COLOR, font=font)
-    img_edit.text(description_pos, description, TEXT_COLOR, font=small_font)
+
+    if description:
+        text_size = small_font.getsize(description)
+        description_pos = ((img.width - text_size[0]) / 2,
+                           band_height + (description_band_height -
+                                          text_size[1]) / 2)
+        img_edit.text(description_pos, description,
+                      TEXT_COLOR, font=small_font)
 
     # Add centered text in the bottom white band
     bottom_text_pos = ((img.width - font.getsize(bottom_text)[0]) / 2,
@@ -148,7 +152,7 @@ if __name__ == "__main__":
     datacube = xr.open_zarr(args.datacube_path)
     datacube_name = args.name if args.name \
         else args.datacube_path.split("/")[-1]
-    datacube_description = datacube.attrs["dc3:description"]
+    datacube_description = datacube.attrs.get("description")
 
     if args.big:
         size = [len(datacube.x), len(datacube.y)]

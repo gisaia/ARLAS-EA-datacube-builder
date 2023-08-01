@@ -1,11 +1,12 @@
-import datetime
 import json
 import os
 import os.path as path
 import random
+import re
 import shutil
 import string
 import tarfile
+from datetime import datetime
 from pathlib import Path
 
 # Useful for getting the nodata of the band
@@ -16,8 +17,10 @@ from pyproj import CRS
 from datacube.core.geo.utils import bbox2polygon
 from datacube.core.models.metadata import DatacubeMetadata
 from datacube.core.models.request.cubeBuild import ExtendedCubeBuildRequest
-from datacube.core.pivot.models.catalogue import (Band, CatalogueDescription,
-                                                  Polygon, Properties)
+from datacube.core.pivot.models.catalog import (Band, CatalogDescription,
+                                                Polygon, Properties,
+                                                SensorFamily)
+from datacube.core.utils import get_raster_driver
 
 
 def unique_id(size):
@@ -27,7 +30,7 @@ def unique_id(size):
 
 def band_to_STAC_raster_band(band: xr.DataArray) -> Band:
     return Band(data_type=band.dtype.name,
-                nodata=band.rio.nodata)
+                nodata=str(band.rio.nodata))
 
 
 def pivot_format_datacube(request: ExtendedCubeBuildRequest,
@@ -40,7 +43,7 @@ def pivot_format_datacube(request: ExtendedCubeBuildRequest,
     the name of the preview file.
     """
     # Create the unique id following PFD specifications
-    creation_time = datetime.datetime.now().isoformat(sep='T')[:-7] \
+    creation_time = datetime.now().isoformat(timespec='seconds') \
         .replace('-', '').replace(':', '')
     uid = unique_id(4)
     id = f"MMI_MULT_DCP_{creation_time}_{uid}"
@@ -51,33 +54,78 @@ def pivot_format_datacube(request: ExtendedCubeBuildRequest,
     xmax = datacube.get('x').max().values.tolist()
     ymin = datacube.get('y').min().values.tolist()
     ymax = datacube.get('y').max().values.tolist()
+    tmin = datacube.get('t').min().values.tolist()
+    tmax = datacube.get('t').max().values.tolist()
     bands = ''.join(list(datacube.data_vars.keys()))
     raster_bands = [
         band_to_STAC_raster_band(b) for b in datacube.data_vars.values()]
     datacube.close()
 
-    # In a folder PRODUCT_<ID>
-    pivot_root_folder = path.join(str(Path(datacube_path).parent),
-                                  f"PRODUCT_{id}")
+    # In a folder <ID>
+    pivot_root_folder = path.join(str(Path(datacube_path).parent), id)
     os.mkdir(pivot_root_folder)
 
-    # Create catalogue CAT_<ID>.json file
+    # Find sensor family
+    datacube_sensor = None
+    for alias in request.aliases:
+        sensor: SensorFamily = get_raster_driver(alias).SENSOR_TYPE \
+            if hasattr(get_raster_driver(alias), "SENSOR_TYPE") \
+            else SensorFamily.UNKNOWN
+        if not datacube_sensor:
+            datacube_sensor = sensor
+        else:
+            if sensor == SensorFamily.UNKNOWN or \
+              datacube_sensor == SensorFamily.UNKNOWN:
+                datacube_sensor = SensorFamily.UNKNOWN
+            elif sensor != datacube_sensor:
+                datacube_sensor = SensorFamily.MULTI
+
+    # Create catalog CAT_<ID>.json file
     x, y = bbox2polygon(xmin, ymin, xmax, ymax).exterior.coords.xy
-    geometry = Polygon(coordinates=[[x[i], y[i]] for i in range(len(x))])
-    properties = Properties(**{
-        **metadata.dict(by_alias=True),
-        "proj:epsg": CRS.from_string(request.target_projection).to_epsg(),
-        "raster:bands": raster_bands
-    })
-    catalogue = CatalogueDescription(id=id, collection="DOX",
-                                     bbox=[xmin, ymin, xmax, ymax],
-                                     geometry=geometry,
-                                     properties=properties)
-    with open(path.join(pivot_root_folder, f"CAT_{id}.json"), 'w') as f:
-        f.write(json.dumps(catalogue.dict(by_alias=True), indent=2))
+    geometry = Polygon(coordinates=[[[x[i], y[i]] for i in range(len(x))]])
+    properties = Properties(
+        datetime=datetime.utcnow().isoformat(timespec='seconds') + 'Z',
+        start_datetime=datetime.utcfromtimestamp(tmin).isoformat() + 'Z',
+        end_datetime=datetime.utcfromtimestamp(tmax).isoformat() + 'Z',
+        **metadata.dict(by_alias=True), **{
+            "proj:epsg": CRS.from_string(request.target_projection).to_epsg(),
+            "raster:bands": raster_bands,
+            "dox:thematics": request.thematics,
+            "dox:sensorFamily": datacube_sensor
+        }
+    )
+
+    title = (request.datacube_path[:-1] if request.datacube_path[-1] == "/"
+             else request.datacube_path).split("/")[-1]
+
+    catalog = CatalogDescription(
+        title=title, description=request.description, id=id,
+        bbox=[xmin, ymin, xmax, ymax], geometry=geometry,
+        assets={"datacube": [b for b in datacube.data_vars.keys()]},
+        properties=properties)
+
+    with open(path.join(pivot_root_folder, f"CAT_{id}.JSON"), 'w') as f:
+        catalog_dict = catalog.dict(by_alias=True, exclude_none=True)
+
+        properties = {}
+        dc_properties = {}
+        for k, v in catalog_dict['properties'].items():
+            if (not re.match('^dc3', k)) and (not re.match('^cube', k)):
+                if k == 'processing:level':
+                    properties['processing:product_type'] = v
+                elif k == 'proj:epsg':
+                    properties[k] = str(v)
+                else:
+                    properties[k] = v
+            else:
+                # Replace dc3 with dox_dc3
+                dc_properties[re.sub('^dc3', 'dox_dc3', k)] = v
+
+        catalog_dict['properties'] = {**properties, **dc_properties}
+        f.write(json.dumps(catalog_dict, indent=2))
 
     # Rename preview to PREVIEW
-    pivot_preview_name = f"PREVIEW_{id}.PNG"
+    pivot_preview_name = f"PREVIEW_{id}.JPG"
     shutil.copy(preview_path, path.join(pivot_root_folder, pivot_preview_name))
 
     # Put zarr in folder under the format IMG_DC3_<BANDS>_<ID>.zarr

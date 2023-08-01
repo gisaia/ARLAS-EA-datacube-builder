@@ -226,7 +226,7 @@ def build_datacube(request: ExtendedCubeBuildRequest):
     # Compute the bands requested from the product bands
     for band in request.bands:
         datacube[band.name] = eval(
-            get_eval_formula(band.value, request.aliases))
+            get_eval_formula(band.expression, request.aliases))
         if band.min is not None and band.max is not None:
             datacube[band.name] = datacube[band.name].clip(band.min, band.max)
 
@@ -237,9 +237,10 @@ def build_datacube(request: ExtendedCubeBuildRequest):
     # Add relevant datacube metadata
     metadata = create_datacube_metadata(request, datacube, lon_step, lat_step)
     datacube.attrs.update(metadata.dict(exclude_unset=True, by_alias=True))
+    datacube.attrs.update({"description": request.description})
 
     # Creating preview
-    preview_path = f'{zarr_root_path}.png'
+    preview_path = f'{zarr_root_path}.jpg'
     if len(datacube.attrs["dc3:preview"]) == 3:
         preview = create_preview_b64(datacube, request.rgb,
                                      preview_path)
@@ -290,7 +291,7 @@ def build_datacube(request: ExtendedCubeBuildRequest):
             traceback.print_exc()
             raise UploadError(detail=f"Datacube: {e.args[0]}")
 
-        preview_file_name = f"{request.datacube_path}.png"
+        preview_file_name = f"{request.datacube_path}.jpg"
 
     LOGGER.info("Uploading preview to storage")
     try:

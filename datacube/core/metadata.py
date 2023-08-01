@@ -9,6 +9,7 @@ from datacube.core.cache.cache_manager import CacheManager
 from datacube.core.geo.utils import bbox2polygon, project_polygon
 from datacube.core.models.enums import RGB
 from datacube.core.models.metadata import (DatacubeMetadata, DimensionType,
+                                           GroupMetadata,
                                            HorizontalSpatialDimension,
                                            QualityIndicators,
                                            QualityIndicatorsCube,
@@ -45,10 +46,10 @@ def create_datacube_metadata(request: ExtendedCubeBuildRequest,
                      / (len(datacube.get("t")) - 1))
     dimensions["t"] = TemporalDimension(
         type=DimensionType.TEMPORAL, axis="t", description="",
-        extent=[datetime.fromtimestamp(
-                    datacube.get("t").values[0]).isoformat(),
-                datetime.fromtimestamp(
-                    datacube.get("t").values[-1]).isoformat()],
+        extent=[datetime.utcfromtimestamp(
+                    datacube.get("t").values[0]).isoformat() + 'Z',
+                datetime.utcfromtimestamp(
+                    datacube.get("t").values[-1]).isoformat() + 'Z'],
         step=t_step
     )
 
@@ -59,7 +60,7 @@ def create_datacube_metadata(request: ExtendedCubeBuildRequest,
             type="data", description=band.description,
             extent=[datacube.get(band.name).min().values.tolist(),
                     datacube.get(band.name).max().values.tolist()],
-            unit=band.unit, expression=band.value
+            unit=band.unit, expression=band.expression
         )
 
     # If all colors have been assigned, use them for the preview
@@ -117,52 +118,54 @@ def create_datacube_metadata(request: ExtendedCubeBuildRequest,
 
         # Split rasters of the group by type
         for type, rasters in group.items():
-            group_indicators_per_type[type] = QualityIndicators(
-                time_compacity=compute_time_compacity(
+            group_indicators_per_type[type] = QualityIndicators(**{
+                "dc3:time_compacity": compute_time_compacity(
                     rasters, timespan),
-                spatial_coverage=compute_spatial_coverage(
+                "dc3:spatial_coverage": compute_spatial_coverage(
                     rasters, request.roi_polygon, request.target_projection),
-                group_lightness=compute_group_lightness(
-                    rasters, request.roi_polygon, request.target_projection))
+                "dc3:group_lightness": compute_group_lightness(
+                    rasters, request.roi_polygon, request.target_projection)
+            })
         indicators_per_group_per_type.append(group_indicators_per_type)
 
     # For the group, the indicator is the product of those of each type
-    group_indicators: dict[str, dict[str, float]] = {}
+    composition: list[GroupMetadata] = []
     for idx, group in enumerate(indicators_per_group_per_type):
-        group_indicators[str(request.composition[idx].timestamp)] = \
-                QualityIndicators(
-                    time_compacity=math.prod(
-                        map(lambda t: t.time_compacity, group.values())),
-                    spatial_coverage=math.prod(
-                        map(lambda t: t.spatial_coverage, group.values())),
-                    group_lightness=math.prod(
-                        map(lambda t: t.group_lightness, group.values()))
-                ).dict()
-
-    # The group indicators are stored with the time coordinates
-    datacube.get('t').attrs.update(group_indicators)
+        composition.append(GroupMetadata(
+            rasters=[r.id for r in request.composition[idx].rasters],
+            timestamp=request.composition[idx].timestamp,
+            **{
+                "dc3:time_compacity": math.prod(
+                    map(lambda t: t.time_compacity, group.values())),
+                "dc3:spatial_coverage": math.prod(
+                    map(lambda t: t.spatial_coverage, group.values())),
+                "dc3:group_lightness": math.prod(
+                    map(lambda t: t.group_lightness, group.values()))
+            }
+        ))
 
     # For the type, the indicator is the product of those of each group
     # of the desired type
     type_indicators: dict[str, QualityIndicators] = {}
     for type in request.aliases:
         type_key = type.to_key()
-        type_indicators[type_key] = QualityIndicators(
-            time_compacity=math.prod(
+        type_indicators[type_key] = QualityIndicators(**{
+            "dc3:time_compacity": math.prod(
                 map(lambda g: g[type_key].time_compacity if type_key in g
                     else 1, indicators_per_group_per_type)),
-            spatial_coverage=math.prod(
+            "dc3:spatial_coverage": math.prod(
                 map(lambda g: g[type_key].spatial_coverage if type_key in g
                     else 1, indicators_per_group_per_type)),
-            group_lightness=math.prod(
+            "dc3:group_lightness": math.prod(
                 map(lambda g: g[type_key].group_lightness if type_key in g
-                    else 1, indicators_per_group_per_type)))
+                    else 1, indicators_per_group_per_type))
+        })
 
     band_indicators: dict[str, QualityIndicators] = {}
     for band in request.bands:
         # Find which product types constitute the band
         aliases_in_band = re.findall(r'([a-zA-Z0-9]*)\.[a-zA-Z0-9]*',
-                                     band.value)
+                                     band.expression)
         types_in_band = []
         for alias in aliases_in_band:
             for type in request.aliases:
@@ -172,28 +175,30 @@ def create_datacube_metadata(request: ExtendedCubeBuildRequest,
 
         # Compute the indicator as a product of the those of the products
         # used to compute the band
-        band_indicators[band.name] = QualityIndicators(
-            time_compacity=math.prod(
+        band_indicators[band.name] = QualityIndicators(**{
+            "dc3:time_compacity": math.prod(
                 map(lambda t: type_indicators[t].time_compacity,
                     types_in_band)),
-            spatial_coverage=math.prod(
+            "dc3:spatial_coverage": math.prod(
                 map(lambda t: type_indicators[t].spatial_coverage,
                     types_in_band)),
-            group_lightness=math.prod(
+            "dc3:group_lightness": math.prod(
                 map(lambda t: type_indicators[t].group_lightness,
-                    types_in_band)))
+                    types_in_band))
+        })
         # Add indicator to the datacube
         datacube.get(band.name).attrs.update(band_indicators[band.name].dict())
 
     # For the cube, the indicator is the product of those of each group
-    cube_indicators = QualityIndicatorsCube(
-        time_compacity=math.prod(
-            map(lambda g: g['time_compacity'], group_indicators.values())),
-        spatial_coverage=math.prod(
-            map(lambda g: g['spatial_coverage'], group_indicators.values())),
-        group_lightness=math.prod(
-            map(lambda g: g['group_lightness'], group_indicators.values())),
-        time_regularity=compute_time_regularity(request.composition))
+    cube_indicators = QualityIndicatorsCube(**{
+        "dc3:time_compacity": math.prod(
+            map(lambda g: g.time_compacity, composition)),
+        "dc3:spatial_coverage": math.prod(
+            map(lambda g: g.spatial_coverage, composition)),
+        "dc3:group_lightness": math.prod(
+            map(lambda g: g.group_lightness, composition)),
+        "dc3:time_regularity": compute_time_regularity(request.composition)
+    })
 
     # Fill ratio is the average of how much each band is filled
     fill_ratio = 0
@@ -202,16 +207,14 @@ def create_datacube_metadata(request: ExtendedCubeBuildRequest,
         fill_ratio += 1 - band.isnull().sum().compute().values / cube_size
     fill_ratio = fill_ratio / len(datacube.data_vars)
 
-    return DatacubeMetadata(**{
+    return DatacubeMetadata(**cube_indicators.dict(by_alias=True), **{
         "cube:dimensions": dimensions,
         "cube:variables": variables,
-        "dc3:composition": request.composition,
+        "dc3:composition": composition,
         "dc3:preview": preview,
         "dc3:number_of_chunks": number_of_chunks,
         "dc3:chunk_weight": chunk_weight,
-        "dc3:quality_indicators": cube_indicators,
-        "dc3:fill_ratio": fill_ratio,
-        "dc3:description": request.description})
+        "dc3:fill_ratio": fill_ratio})
 
 
 def compute_time_compacity(rasters: list[CachedAbstractRasterArchive],

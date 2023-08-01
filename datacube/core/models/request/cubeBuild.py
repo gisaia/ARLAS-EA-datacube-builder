@@ -27,16 +27,19 @@ ALIASES_DESCRIPTION = "The list of aliases for this datacube. " + \
                       "product bands used to compute the datacube bands."
 ROI_DESCRIPTION = "The Region Of Interest to extract. " + \
                   "Accepted formats are BBOX or WKT POLYGON."
-RESOLUTION_DESCRIPTION = "The requested spatial resolution in meters."
+RESOLUTION_DESCRIPTION = "The requested spatial resolution in meters. " + \
+                         "By default uses the best resolution of the " + \
+                         "given products."
 PROJECTION_DESCRIPTION = "The targeted projection. Default: 'EPSG:4326'."
 CHUNKING_DESCRIPTION = "Defines how we want the datacube to be chunked, " + \
                        "to facilitate further data processing. Three " + \
                        "strategies are available: 'carrot', 'potato' and " + \
-                       "'spinach'. 'Carrot' creates deep temporal slices, " + \
+                       "'spinach'. 'carrot' creates deep temporal slices, " + \
                        "while 'spinach' chunks data on wide geographical " + \
                        "areas. 'Potato' is a balanced option, creating " + \
                        "an equally sized chunk."
-DESCRIPTION_DESCRIPTION = "The datacube's description"
+DESCRIPTION_DESCRIPTION = "The datacube's description."
+THEMATICS_DESCRIPTION = "Thematics of the datacube."
 
 
 class CubeBuildRequest(BaseModel):
@@ -52,6 +55,7 @@ class CubeBuildRequest(BaseModel):
     chunking_strategy: CStrat = Field(default=CStrat.POTATO,
                                       description=CHUNKING_DESCRIPTION)
     description: str | None = Field(description=DESCRIPTION_DESCRIPTION)
+    thematics: list[str] | None = Field(description=THEMATICS_DESCRIPTION)
 
 
 class ExtendedCubeBuildRequest(CubeBuildRequest, arbitrary_types_allowed=True):
@@ -93,7 +97,7 @@ class ExtendedCubeBuildRequest(CubeBuildRequest, arbitrary_types_allowed=True):
             if band.rgb is not None:
                 if band.rgb in self.rgb:
                     raise BadRequest(title="Too many bands given for color",
-                                     detail=band.rgb.value)
+                                     detail=band.rgb.expression)
                 self.rgb[band.rgb] = band.name
 
         if len(self.rgb) != 3 and len(self.rgb) != 0:

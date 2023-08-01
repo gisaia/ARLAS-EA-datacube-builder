@@ -30,6 +30,10 @@ When running the service, a swagger of the API is available at the path `/docs` 
 
 The service caches raster metadata in a `cache` folder, that is cleared at the launch as well as as the metadatas are consumed.
 
+Examples of requests are available in the `scripts/tests` folder.
+
+**Currently, the resolution of the product will be the same as the highest resolution band that is given. This will evolve in future update and make use of the `target_resolution` field.
+
 ## Prerequisites
 
 Docker or python3
@@ -83,6 +87,8 @@ input:
 output:
   ...
 ```
+
+To launch it with the docker image, the host has to be `0.0.0.0`.
 
 ### Input configuration
 

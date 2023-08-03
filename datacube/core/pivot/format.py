@@ -138,7 +138,7 @@ def pivot_format_datacube(request: ExtendedCubeBuildRequest,
 
     # Tar gz archive
     archive_path = path.join(str(Path(datacube_path).parent), f"{id}.TAR")
-    with tarfile.open(archive_path, "w:gz") as tar:
+    with tarfile.open(archive_path, "w") as tar:
         tar.add(pivot_root_folder, arcname=path.basename(pivot_root_folder))
 
     # Remove un-tarred folder

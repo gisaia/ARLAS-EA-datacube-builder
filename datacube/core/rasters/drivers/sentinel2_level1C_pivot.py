@@ -6,7 +6,6 @@ from datetime import datetime
 from typing import ClassVar
 
 import smart_open as so
-from datacube.core.logging.logger import CustomLogger
 from datacube.core.models.enums import SensorFamily
 
 from datacube.core.models.exception import DownloadError
@@ -66,13 +65,11 @@ class Sentinel2_Level1C_Pivot(AbstractRasterArchive):
                 # Extract timestamp of production of the product
                 for f_name in file_names:
                     if re.match(r".*/CAT_S2._MSI__L1C_.*.JSON", f_name):
-                        CustomLogger().get_logger().info(f_name)
                         if not path.exists(zip_extract_path + f_name):
                             raster_tar.extract(f_name, zip_extract_path)
                         with open(zip_extract_path + f_name, 'r') as f:
                             product_datetime: str = json.load(
                                 f)["properties"]["datetime"]
-                            CustomLogger().get_logger().warn(product_datetime)
                             self.product_time = datetime.timestamp(
                                 datetime.fromisoformat(
                                     product_datetime.replace('Z', '+00:00')))

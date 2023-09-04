@@ -10,7 +10,7 @@ from datetime import datetime
 from pathlib import Path
 
 # Useful for getting the nodata of the band
-import rioxarray
+import rioxarray  # noqa: F401
 import xarray as xr
 from pyproj import CRS
 
@@ -21,6 +21,7 @@ from datacube.core.pivot.models.catalog import (Band, CatalogDescription,
                                                 Polygon, Properties,
                                                 SensorFamily)
 from datacube.core.utils import get_raster_driver
+from datacube.core.visualisation.gif import create_gif, get_gif_size
 
 
 def unique_id(size):
@@ -35,7 +36,6 @@ def band_to_STAC_raster_band(band: xr.DataArray) -> Band:
 
 def pivot_format_datacube(request: ExtendedCubeBuildRequest,
                           datacube_path: str,
-                          preview_path: str,
                           metadata: DatacubeMetadata) -> tuple[str, str]:
     """
     Transforms the datacube in the Pivot archive format.
@@ -124,9 +124,10 @@ def pivot_format_datacube(request: ExtendedCubeBuildRequest,
         catalog_dict['properties'] = {**properties, **dc_properties}
         f.write(json.dumps(catalog_dict, indent=2))
 
-    # Rename preview to PREVIEW
-    pivot_preview_name = f"PREVIEW_{id}.JPG"
-    shutil.copy(preview_path, path.join(pivot_root_folder, pivot_preview_name))
+    # Generate GIF preview
+    pivot_preview_name = f"PREVIEW_{id}.GIF"
+    create_gif(datacube, title, pivot_preview_name,
+               get_gif_size(datacube), pivot_root_folder)
 
     # Put zarr in folder under the format IMG_DC3_<BANDS>_<ID>.zarr
     image_root_folder = path.join(pivot_root_folder, f"IMAGE_{id}")

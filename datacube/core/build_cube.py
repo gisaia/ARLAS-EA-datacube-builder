@@ -23,13 +23,14 @@ from datacube.core.models.enums import ChunkingStrategy as CStrat
 from datacube.core.models.exception import (DownloadError, MosaickingError,
                                             UploadError)
 from datacube.core.models.request.cubeBuild import ExtendedCubeBuildRequest
+from datacube.core.pivot.format import pivot_format_datacube
 from datacube.core.storage.utils import (create_input_storage,
                                          get_mapper_output, write_bytes)
-from datacube.core.pivot.format import pivot_format_datacube
 from datacube.core.utils import (get_eval_formula, get_product_bands,
                                  get_raster_driver)
 from datacube.core.visualisation.preview import (create_preview_b64,
-                                                 create_preview_b64_cmap)
+                                                 create_preview_b64_cmap,
+                                                 prepare_visualisation)
 
 TMP_DIR = "tmp/"
 LOGGER = Logger.get_logger()
@@ -239,16 +240,6 @@ def build_datacube(request: ExtendedCubeBuildRequest):
     datacube.attrs.update(metadata.dict(exclude_unset=True, by_alias=True))
     datacube.attrs.update({"description": request.description})
 
-    # Creating preview
-    preview_path = f'{zarr_root_path}.jpg'
-    if len(datacube.attrs["dc3:preview"]) == 3:
-        preview = create_preview_b64(datacube, request.rgb,
-                                     preview_path)
-    else:
-        preview = create_preview_b64_cmap(
-            datacube, datacube.attrs["dc3:preview"],
-            preview_path)
-
     if request.pivot_format:
         # Write datacube in tmp dir
         final_datacube = f"{zarr_root_path}_{str(time.time())}"
@@ -260,7 +251,6 @@ def build_datacube(request: ExtendedCubeBuildRequest):
         # Format datacube to pivot
         pivot_path, preview_file_name = pivot_format_datacube(request,
                                                               final_datacube,
-                                                              preview_path,
                                                               metadata)
         shutil.rmtree(final_datacube)
 
@@ -269,6 +259,7 @@ def build_datacube(request: ExtendedCubeBuildRequest):
             with open(pivot_path, 'rb') as ftar:
                 product_url = write_bytes(pivot_path.split("/")[-1],
                                           ftar.read())
+                preview_url = path.join(product_url, preview_file_name)
             os.remove(pivot_path)
 
         except Exception as e:
@@ -293,14 +284,29 @@ def build_datacube(request: ExtendedCubeBuildRequest):
 
         preview_file_name = f"{request.datacube_path}.jpg"
 
-    LOGGER.info("Uploading preview to storage")
-    try:
-        preview_url = write_bytes(preview_file_name,
-                                  base64.b64decode(preview))
-    except Exception as e:
-        LOGGER.error(e)
-        traceback.print_exc()
-        raise UploadError(detail=f"Preview: {e.args[0]}")
+        # Creating preview
+        LOGGER.info("Preparing datacube for preview generation")
+        coarsed_datacube, clip_values = prepare_visualisation(
+            datacube, list(datacube.attrs["dc3:preview"].values()))
+
+        preview_path = f'{zarr_root_path}.jpg'
+        if len(datacube.attrs["dc3:preview"]) == 3:
+            preview = create_preview_b64(coarsed_datacube, request.rgb,
+                                         preview_path, clip_values)
+        else:
+            preview = create_preview_b64_cmap(
+                coarsed_datacube, datacube.attrs["dc3:preview"],
+                preview_path, clip_values)
+        LOGGER.info("Preview generated")
+
+        LOGGER.info("Uploading preview to storage")
+        try:
+            preview_url = write_bytes(preview_file_name,
+                                      base64.b64decode(preview))
+        except Exception as e:
+            LOGGER.error(e)
+            traceback.print_exc()
+            raise UploadError(detail=f"Preview: {e.args[0]}")
 
     # Clean up the files created
     del datacube

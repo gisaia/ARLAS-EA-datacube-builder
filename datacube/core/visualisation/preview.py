@@ -1,27 +1,48 @@
 import base64
 
-# Apparently necessary for the .rio to work
-import rioxarray
+# Necessary for the .rio to work
+import rioxarray  # noqa F401
 import xarray as xr
 from matplotlib import cm
 from PIL import Image
 
 from datacube.core.models.enums import RGB
+from datacube.core.xarray import MinMax, coarse_bands, get_approximate_quantile
 
 
-def __resize_band(dataset: xr.Dataset, band: str, x_factor: int,
-                  y_factor: int, time_slice: int) -> xr.DataArray:
+def prepare_visualisation(datacube: xr.Dataset, bands: list[str],
+                          size: tuple[int, int] = [256, 256]) \
+                            -> tuple[xr.Dataset, dict[str, MinMax]]:
     """
-    Put a band values between 0 and 255
+    Prepare a datacube for visualisation by coarsing it to fit the input size,
+    and compute the 2nd and 98th centile for data clipping.
+    This method should be used before any create preview method.
     """
-    band: xr.DataArray = dataset[band].sel(t=time_slice)
+    # Factor to resize the image
+    x_factor = len(datacube.x) // size[0]
+    y_factor = len(datacube.y) // size[1]
 
-    """ Change the resolution """
-    band = band.coarsen({"x": x_factor, "y": y_factor}, boundary="pad").mean()
+    coarsed_datacube = coarse_bands(datacube, bands,
+                                    x_factor, y_factor)
 
-    """ Clip the 2% of highest and lowest values """
-    min, max = band.chunk({"x": -1, "y": -1}) \
-                   .quantile([0.02, 0.98], dim=["x", "y"]).values
+    # Per band, find the 2nd and 98th centile
+    clip_values: dict[str, MinMax] = {}
+    for band in bands:
+        clip_values[band] = get_approximate_quantile(
+            coarsed_datacube.get(band), 0.02)
+
+    return coarsed_datacube, clip_values
+
+
+def __resize_band(dataset: xr.Dataset, band_name: str, time_slice: int,
+                  min: float, max: float) -> xr.DataArray:
+    """
+    Clip a band value between min and max,
+    then normalize them between 0 and 255
+    """
+    band: xr.DataArray = dataset[band_name].sel(t=time_slice)
+
+    """ Clip the highest and lowest values """
     band = xr.where(band > max, max, band)
     band = xr.where(band < min, min, band)
 
@@ -31,22 +52,20 @@ def __resize_band(dataset: xr.Dataset, band: str, x_factor: int,
 
 
 def create_preview_b64(dataset: xr.Dataset, bands: dict[RGB, str],
-                       preview_path: str, time_slice=None,
-                       size: list[int] = [256, 256]):
+                       preview_path: str, clip_values: dict[str, MinMax],
+                       time_slice: float = None,
+                       size: tuple[int, int] = [256, 256]):
     """
-    Create a 256x256 preview of datacube and convert it to base64
+    Create a preview of datacube and convert it to base64
     """
     if time_slice is None:
         time_slice = dataset.get("t").values[-1]
 
-    # Factor to resize the image
-    xfactor = len(dataset.x) // size[0]
-    yfactor = len(dataset.y) // size[1]
-
     overview_data = xr.Dataset()
     for color, band in bands.items():
         overview_data[color.value] = __resize_band(
-            dataset, band, xfactor, yfactor, time_slice)
+            dataset, band, time_slice,
+            clip_values[band].min, clip_values[band].max)
 
     xlen = len(overview_data.x)
     ylen = len(overview_data.y)
@@ -66,18 +85,15 @@ def create_preview_b64(dataset: xr.Dataset, bands: dict[RGB, str],
 
 
 def create_preview_b64_cmap(dataset: xr.Dataset, preview: dict[str, str],
-                            preview_path: str, time_slice=None,
-                            size: list[int] = [256, 256]):
+                            preview_path: str, clip_values: dict[str, MinMax],
+                            time_slice: float = None,
+                            size: tuple[int, int] = [256, 256]):
     if time_slice is None:
         time_slice = dataset.get("t").values[-1]
     cmap, band = list(preview.items())[0]
 
-    # Factor to resize the image
-    x_factor = len(dataset.x) // size[0]
-    y_factor = len(dataset.y) // size[1]
-
-    data = __resize_band(dataset, band,
-                         x_factor, y_factor, time_slice).values
+    data = __resize_band(dataset, band, time_slice,
+                         clip_values[band].min, clip_values[band].max).values
 
     xlen = data.shape[0]
     ylen = data.shape[1]

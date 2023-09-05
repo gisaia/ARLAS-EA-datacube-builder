@@ -11,6 +11,7 @@ RUN pip install -r requirements.txt
 
 COPY ./app.py /app/app.py
 COPY ./datacube /app/datacube
+COPY ./assets /app/assets
 
 ENTRYPOINT [ "python3" ]
 

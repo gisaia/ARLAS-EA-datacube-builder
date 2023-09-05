@@ -11,7 +11,7 @@ from PIL import Image, ImageDraw, ImageFont
 from datacube.core.logging.logger import CustomLogger as Logger
 from datacube.core.models.enums import RGB
 from datacube.core.visualisation.preview import (create_preview_b64,
-                                                 create_preview_b64_cmap,
+                                                 create_preview_b64_cmap, image_to_base64,
                                                  prepare_visualisation)
 
 ROOT_PATH = str(Path(__file__).parent.parent.parent.parent)
@@ -89,9 +89,9 @@ def add_text_on_image(imgPath: str, name: str,
 
 def create_gif(datacube: xr.Dataset, dc_name: str,
                gif_name: str, size: [int, int],
-               relative_output_dir="output", relative_tmp_dir="tmp"):
+               relative_output_dir="output", relative_tmp_dir="tmp") -> str:
     """
-    Create a gif based on a datacube
+    Create a gif based on a datacube, and return a base64 representation of it
     """
     Logger.get_logger().info("Generating gif")
     # Find where to put the temporary pictures
@@ -128,12 +128,13 @@ def create_gif(datacube: xr.Dataset, dc_name: str,
                           datacube.attrs.get("description"), t_text)
 
     # Create the gif and clean-up
+    gif_path = path.join(ROOT_PATH, relative_output_dir, gif_name)
     os.system(f"cd {path.join(relative_tmp_dir, gif_root_path)};" +
-              "convert -delay 100 -loop 0 *.png " +
-              path.join(ROOT_PATH, relative_output_dir, gif_name))
+              f"convert -delay 100 -loop 0 *.png {gif_path}")
     shutil.rmtree(f"{path.join(relative_tmp_dir, gif_root_path)}")
 
     Logger.get_logger().info("Gif generated")
+    return image_to_base64(gif_path)
 
 
 def get_gif_size(datacube: xr.Dataset,

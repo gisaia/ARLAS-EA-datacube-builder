@@ -249,9 +249,8 @@ def build_datacube(request: ExtendedCubeBuildRequest):
             .close()
 
         # Format datacube to pivot
-        pivot_path, preview_file_name = pivot_format_datacube(request,
-                                                              final_datacube,
-                                                              metadata)
+        pivot_path, preview_file_name, preview = pivot_format_datacube(
+            request, final_datacube, metadata)
         shutil.rmtree(final_datacube)
 
         LOGGER.info("Writing datacube in pivot format to storage")

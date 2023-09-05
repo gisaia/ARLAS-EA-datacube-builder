@@ -51,20 +51,20 @@ def __resize_band(dataset: xr.Dataset, band_name: str, time_slice: int,
     return band.transpose().reindex(y=band.y[::-1])
 
 
-def create_preview_b64(dataset: xr.Dataset, bands: dict[RGB, str],
+def create_preview_b64(datacube: xr.Dataset, bands: dict[RGB, str],
                        preview_path: str, clip_values: dict[str, MinMax],
                        time_slice: float = None,
                        size: tuple[int, int] = [256, 256]):
     """
-    Create a preview of datacube and convert it to base64
+    Create a RGB preview of a datacube and convert it to base64
     """
     if time_slice is None:
-        time_slice = dataset.get("t").values[-1]
+        time_slice = datacube.get("t").values[-1]
 
     overview_data = xr.Dataset()
     for color, band in bands.items():
         overview_data[color.value] = __resize_band(
-            dataset, band, time_slice,
+            datacube, band, time_slice,
             clip_values[band].min, clip_values[band].max)
 
     xlen = len(overview_data.x)
@@ -84,15 +84,18 @@ def create_preview_b64(dataset: xr.Dataset, bands: dict[RGB, str],
     return b64_image
 
 
-def create_preview_b64_cmap(dataset: xr.Dataset, preview: dict[str, str],
+def create_preview_b64_cmap(datacube: xr.Dataset, preview: dict[str, str],
                             preview_path: str, clip_values: dict[str, MinMax],
                             time_slice: float = None,
                             size: tuple[int, int] = [256, 256]):
+    """
+    Create a color map preview of a datacube and convert it to base64
+    """
     if time_slice is None:
-        time_slice = dataset.get("t").values[-1]
+        time_slice = datacube.get("t").values[-1]
     cmap, band = list(preview.items())[0]
 
-    data = __resize_band(dataset, band, time_slice,
+    data = __resize_band(datacube, band, time_slice,
                          clip_values[band].min, clip_values[band].max).values
 
     xlen = data.shape[0]
@@ -106,8 +109,14 @@ def create_preview_b64_cmap(dataset: xr.Dataset, preview: dict[str, str],
     except OSError:
         img.convert('RGB').save(preview_path)
 
-    # encode in base64
-    with open(preview_path, 'rb') as fb:
+    return image_to_base64(preview_path)
+
+
+def image_to_base64(img_path: str):
+    """
+    Return a base64 encoded string of the given image/gif
+    """
+    with open(img_path, 'rb') as fb:
         b64_image = base64.b64encode(fb.read()).decode('utf-8')
 
     return b64_image

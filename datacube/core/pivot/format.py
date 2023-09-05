@@ -36,11 +36,11 @@ def band_to_STAC_raster_band(band: xr.DataArray) -> Band:
 
 def pivot_format_datacube(request: ExtendedCubeBuildRequest,
                           datacube_path: str,
-                          metadata: DatacubeMetadata) -> tuple[str, str]:
+                          metadata: DatacubeMetadata) -> tuple[str, str, str]:
     """
     Transforms the datacube in the Pivot archive format.
-    Returns the path to the tarred Pivot archive and
-    the name of the preview file.
+    Returns the path to the tarred Pivot archive,
+    the name of the preview file and the base64 encoded value of the preview.
     """
     # Create the unique id following PFD specifications
     creation_time = datetime.now().isoformat(timespec='seconds') \
@@ -126,8 +126,8 @@ def pivot_format_datacube(request: ExtendedCubeBuildRequest,
 
     # Generate GIF preview
     pivot_preview_name = f"PREVIEW_{id}.GIF"
-    create_gif(datacube, title, pivot_preview_name,
-               get_gif_size(datacube), pivot_root_folder)
+    preview_b64 = create_gif(datacube, title, pivot_preview_name,
+                             get_gif_size(datacube), pivot_root_folder)
 
     # Put zarr in folder under the format IMG_DC3_<BANDS>_<ID>.zarr
     image_root_folder = path.join(pivot_root_folder, f"IMAGE_{id}")
@@ -145,4 +145,4 @@ def pivot_format_datacube(request: ExtendedCubeBuildRequest,
     # Remove un-tarred folder
     shutil.rmtree(pivot_root_folder)
 
-    return archive_path, pivot_preview_name
+    return archive_path, pivot_preview_name, preview_b64

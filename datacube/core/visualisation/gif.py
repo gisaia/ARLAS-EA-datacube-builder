@@ -11,7 +11,8 @@ from PIL import Image, ImageDraw, ImageFont
 from datacube.core.logging.logger import CustomLogger as Logger
 from datacube.core.models.enums import RGB
 from datacube.core.visualisation.preview import (create_preview_b64,
-                                                 create_preview_b64_cmap, image_to_base64,
+                                                 create_preview_b64_cmap,
+                                                 image_to_base64,
                                                  prepare_visualisation)
 
 ROOT_PATH = str(Path(__file__).parent.parent.parent.parent)

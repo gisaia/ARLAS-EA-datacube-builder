@@ -69,7 +69,7 @@ The files need to be stored as they would be when extracted from their archive.
 
 ## How to build datacubes
 
-The service can be queried in two ways to build datacubes: first through the `/build/cube` endpoint, but also through an OGC API Processes compliant endpoint, through the `/processes/dc3-builder/execute` endpoint.
+The service can be queried in two ways to build datacubes: first through the `/build/cube` endpoint, but also through an OGC API Processes compliant endpoint, through the `/processes/dc3-builder/execution` endpoint.
 
 ### /build/cube endpoint
 
@@ -79,7 +79,7 @@ Examples of how to query this endpoint can be found in the `scripts/tests` folde
 
 The datacube builder service offers an API that is OGC API Processes compliant.
 A description of the process and its inputs and outputs can be obtained by querying the `/processes/dc3-builder` endpoint.
-To build a cube using this API, the process to query is `dc3-builder`, by using the `/processes/dc3-builder/execute` endpoint.
+To build a cube using this API, the process to query is `dc3-builder`, by using the `/processes/dc3-builder/execution` endpoint.
 
 ## How to configure ARLAS-datacube-builder
 

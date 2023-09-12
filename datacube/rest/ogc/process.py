@@ -80,7 +80,7 @@ def get_process_summary(process_id: str):
     return PROCESSES[process_id].process
 
 
-@ROUTER.post("/processes/{process_id}/execute",
+@ROUTER.post("/processes/{process_id}/execution",
              response_model_exclude_none=True,
              responses={
                 status.HTTP_200_OK: {
